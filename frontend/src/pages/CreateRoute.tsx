@@ -90,6 +90,9 @@ const CreateRoute = () => {
     if (!input.name || !input.lat || !input.lng)
       return alert('필수 정보를 입력해주세요.');
 
+    if (isNaN(Number(input.lat)) || isNaN(Number(input.lng)))
+      return alert('위도와 경도는 숫자여야 합니다.');
+
     let formattedTime = '';
     if (input.hour && input.minute) {
       const hh = input.hour.padStart(2, '0');
@@ -512,3 +515,4 @@ const CreateRoute = () => {
 };
 
 export default CreateRoute;
+

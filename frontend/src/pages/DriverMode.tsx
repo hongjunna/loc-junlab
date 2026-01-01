@@ -68,7 +68,7 @@ const DriverMode = () => {
       .get(`https://loc.junlab.xyz/api/drive/${id}`)
       .then((res) => {
         setActiveDrive(res.data);
-        setCheckpoints(res.data.checkpoints);
+        setCheckpoints(res.data.checkpoints || []);
         setIsWatching(true);
         localStorage.setItem('activeDriveId', id);
       })
@@ -79,7 +79,7 @@ const DriverMode = () => {
     try {
       const res = await startDrive(id);
       setActiveDrive(res.data);
-      setCheckpoints(res.data.checkpoints);
+      setCheckpoints(res.data.checkpoints || []);
       setIsWatching(true);
       localStorage.setItem('activeDriveId', res.data._id);
     } catch (err) {
@@ -92,7 +92,7 @@ const DriverMode = () => {
       const res = await axios.patch(
         `https://loc.junlab.xyz/api/drive/${activeDrive._id}/checkpoint/${idx}/complete`
       );
-      setCheckpoints(res.data.checkpoints);
+      setCheckpoints(res.data.checkpoints || []);
     } catch (err) {
       alert('수기 도착 처리 실패');
     }
@@ -158,7 +158,7 @@ const DriverMode = () => {
               const res = await updateLocation(activeDrive._id, curLat, curLng);
               lastPosRef.current = { lat: curLat, lng: curLng };
 
-              setCheckpoints(res.data.checkpoints);
+              setCheckpoints(res.data.checkpoints || []);
               if (res.data.message) setMessage(res.data.message);
               addLog('위치 정보 전송 성공');
             } catch (err) {
@@ -177,6 +177,36 @@ const DriverMode = () => {
       lastPosRef.current = null; // 종료 시 초기화
     };
   }, [isWatching, activeDrive]);
+
+  useEffect(() => {
+    let wakeLock: any = null;
+    let isCancelled = false;
+
+    const requestWakeLock = async () => {
+      try {
+        if ('wakeLock' in navigator) {
+          const lock = await navigator.wakeLock.request('screen');
+          if (isCancelled) {
+            lock.release();
+            return;
+          }
+          wakeLock = lock;
+          addLog('화면 꺼짐 방지 활성화');
+        }
+      } catch (err: any) {
+        console.error(`${err.name}, ${err.message}`);
+      }
+    };
+
+    if (isWatching) {
+      requestWakeLock();
+    }
+
+    return () => {
+      isCancelled = true;
+      if (wakeLock !== null) wakeLock.release();
+    };
+  }, [isWatching]);
 
   // 메인 선택 화면
   if (!activeDrive) {
@@ -360,7 +390,7 @@ const DriverMode = () => {
               </tr>
             </thead>
             <tbody>
-              {checkpoints.map((cp, i) => {
+              {(checkpoints || []).map((cp, i) => {
                 const isArrived = cp.status === 'arrived';
                 const isDeparted = cp.status === 'departed';
                 const isPassed = isArrived || isDeparted; // 도착했거나 이미 떠났거나
