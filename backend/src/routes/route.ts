@@ -81,12 +81,14 @@ router.post('/drive/:driveLogId/location', async (req, res) => {
     let message = '';
     let playAnnouncement = false;
 
-    // 모든 체크포인트를 돌며 상태 업데이트 판정
+    // 모든 체크포인트를 순회
     for (let i = 0; i < driveLog.checkpoints.length; i++) {
       const cp = driveLog.checkpoints[i];
       const routePoint = route.points[i];
 
-      // 현재 정류소까지의 거리 (km)
+      // 이미 해당 정류소를 떠난 경우 계산 생략
+      if (cp.status === 'departed') continue;
+
       const distance =
         getDistance(
           { latitude, longitude },
@@ -94,35 +96,53 @@ router.post('/drive/:driveLogId/location', async (req, res) => {
             latitude: routePoint.location.coordinates[1],
             longitude: routePoint.location.coordinates[0],
           }
-        ) / 1000;
+        ) / 1000; // km 단위
 
-      // 1. 접근 판정
+      /**
+       * 1. 접근 판정 (Pending -> Approaching)
+       */
       if (cp.status === 'pending' && distance <= approachRadius) {
         cp.status = 'approaching';
         message = `${cp.pointName}에 접근 중입니다.`;
         if (routePoint.useAnnouncement) playAnnouncement = true;
+        break; // 하나라도 변하면 DB 저장 후 종료 (데이터 안정성)
       }
 
-      // 2. 도착 판정
+      /**
+       * 2. 도착 판정 (Approaching -> Arrived)
+       */
       if (cp.status === 'approaching' && distance <= arrivalRadius) {
         cp.status = 'arrived';
-        cp.arrivalTime = new Date();
+        const now = new Date();
+        cp.arrivalTime = now;
+        if (i === 0) {
+          driveLog.startTime = now;
+          console.log(
+            `[Start-Sync] 첫 정류장 도착에 따른 시작 시각 동기화: ${now}`
+          );
+        }
         message = `${cp.pointName}에 도착했습니다.`;
+        break;
       }
 
-      // 3. 출발 판정 (정상적인 흐름)
-      if (cp.status === 'arrived' && distance > arrivalRadius) {
+      /**
+       * 3. 출발 판정 (Arrived -> Departed)
+       * 차가 도착 상태였는데 반경을 1.2배(오차 범위) 이상 벗어났을 때
+       */
+      if (cp.status === 'arrived' && distance > arrivalRadius * 1.2) {
         cp.status = 'departed';
         cp.departureTime = new Date();
         message = `${cp.pointName}에서 출발했습니다.`;
+        break;
       }
 
-      // [추가된 로직] 4. 자동 통과 판정 (Fail-safe)
-      // 조건: 상태가 'approaching'이고, 다음 정류소가 존재할 때
+      /**
+       * 4. 자동 통과 판정 (Fail-safe)
+       * 접근 중(Approaching)이었으나 도착(Arrived)을 찍지 못하고
+       * 이미 다음 정류장에 더 가까워진 경우
+       */
       if (cp.status === 'approaching' && i < driveLog.checkpoints.length - 1) {
         const nextRoutePoint = route.points[i + 1];
-
-        // 다음 정류소까지의 거리 계산 (km)
         const distToNext =
           getDistance(
             { latitude, longitude },
@@ -132,21 +152,18 @@ router.post('/drive/:driveLogId/location', async (req, res) => {
             }
           ) / 1000;
 
-        // 핵심 로직: 다음 정류소가 현재 정류소보다 더 가까워졌다면 (중간 지점 통과)
-        if (distToNext < distance) {
-          console.log(`[Auto-Pass] ${cp.pointName} 자동 통과 처리됨`);
-
-          cp.status = 'departed'; // 강제로 출발 상태로 변경
-
-          // 시간이 기록되지 않았다면 현재 시간으로 채움
-          if (!cp.arrivalTime) cp.arrivalTime = new Date();
+        // 다음 정류소가 현재 정류소보다 더 가깝고, 현재 정류소 반경을 벗어났다면
+        if (distToNext < distance && distance > arrivalRadius) {
+          cp.status = 'departed';
+          if (!cp.arrivalTime) cp.arrivalTime = new Date(); // 도착 기록 없으면 보정
           cp.departureTime = new Date();
-
-          message = `${cp.pointName}을(를) 통과했습니다. (자동 보정)`;
+          message = `${cp.pointName}을(를) 통과했습니다.`;
+          break;
         }
       }
     }
 
+    // 변경 사항 저장
     await driveLog.save();
 
     res.json({
@@ -156,8 +173,8 @@ router.post('/drive/:driveLogId/location', async (req, res) => {
       message,
     });
   } catch (err) {
-    res.status(500).json({ error: '위치 업데이트 중 오류 발생' });
     console.error('📍 Location Update Error:', err);
+    res.status(500).json({ error: '위치 업데이트 중 오류 발생' });
   }
 });
 

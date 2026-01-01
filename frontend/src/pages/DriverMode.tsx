@@ -13,6 +13,36 @@ const DriverMode = () => {
   );
   const [isWatching, setIsWatching] = useState(false);
   const timerRef = useRef<any>(null);
+  const [logs, setLogs] = useState<string[]>([]);
+  const lastPosRef = useRef<{ lat: number; lng: number } | null>(null);
+  const addLog = (msg: string) => {
+    const now = new Date().toLocaleTimeString([], {
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+    });
+    const newLog = `[${now}] ${msg}`;
+    setLogs((prev) => [newLog, ...prev].slice(0, 3)); // 최신순 3개 유지
+  };
+
+  const getDistance = (
+    lat1: number,
+    lon1: number,
+    lat2: number,
+    lon2: number
+  ) => {
+    const R = 6371e3; // 지구 반지름 (m)
+    const dLat = (lat2 - lat1) * (Math.PI / 180);
+    const dLon = (lon2 - lon1) * (Math.PI / 180);
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(lat1 * (Math.PI / 180)) *
+        Math.cos(lat2 * (Math.PI / 180)) *
+        Math.sin(dLon / 2) *
+        Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
+  };
 
   useEffect(() => {
     fetchInitialData();
@@ -24,7 +54,9 @@ const DriverMode = () => {
     try {
       const resRoutes = await getRoutes();
       setRoutes(resRoutes.data);
-      const resActive = await axios.get('/api/drive/active/all');
+      const resActive = await axios.get(
+        'https://loc.junlab.xyz/api/drive/active/all'
+      );
       setActiveDrives(resActive.data);
     } catch (err) {
       console.error('데이터 로딩 실패', err);
@@ -33,7 +65,7 @@ const DriverMode = () => {
 
   const resume = (id: string) => {
     axios
-      .get(`/api/drive/${id}`)
+      .get(`https://loc.junlab.xyz/api/drive/${id}`)
       .then((res) => {
         setActiveDrive(res.data);
         setCheckpoints(res.data.checkpoints);
@@ -58,7 +90,7 @@ const DriverMode = () => {
   const manualArrive = async (idx: number) => {
     try {
       const res = await axios.patch(
-        `/api/drive/${activeDrive._id}/checkpoint/${idx}/complete`
+        `https://loc.junlab.xyz/api/drive/${activeDrive._id}/checkpoint/${idx}/complete`
       );
       setCheckpoints(res.data.checkpoints);
     } catch (err) {
@@ -69,7 +101,9 @@ const DriverMode = () => {
   const end = async () => {
     if (!confirm('정말로 운행을 종료하고 마감하시겠습니까?')) return;
     try {
-      await axios.post(`/api/drive/${activeDrive._id}/end`);
+      await axios.post(
+        `https://loc.junlab.xyz/api/drive/${activeDrive._id}/end`
+      );
       localStorage.removeItem('activeDriveId');
       window.location.reload();
     } catch (err) {
@@ -98,20 +132,50 @@ const DriverMode = () => {
       timerRef.current = setInterval(() => {
         navigator.geolocation.getCurrentPosition(
           async (p) => {
-            const res = await updateLocation(
-              activeDrive._id,
-              p.coords.latitude,
-              p.coords.longitude
-            );
-            setCheckpoints(res.data.checkpoints);
-            if (res.data.message) setMessage(res.data.message);
+            const { latitude: curLat, longitude: curLng } = p.coords;
+
+            // 1. 이전 위치가 있고, 거리가 100m 미만이면 전송 스킵
+            if (lastPosRef.current) {
+              const distance = getDistance(
+                lastPosRef.current.lat,
+                lastPosRef.current.lng,
+                curLat,
+                curLng
+              );
+
+              const distance_threshold = 20;
+              if (distance < distance_threshold) {
+                addLog(
+                  `이동 거리 부족 (${Math.round(
+                    distance
+                  )}m / ${distance_threshold}m) - 전송 스킵`
+                );
+                return;
+              }
+            }
+
+            try {
+              const res = await updateLocation(activeDrive._id, curLat, curLng);
+              lastPosRef.current = { lat: curLat, lng: curLng };
+
+              setCheckpoints(res.data.checkpoints);
+              if (res.data.message) setMessage(res.data.message);
+              addLog('위치 정보 전송 성공');
+            } catch (err) {
+              addLog('위치 전송 실패 (서버 오류)');
+            }
           },
-          (e) => {},
+          (e) => {
+            addLog('GPS 신호를 찾을 수 없습니다.');
+          },
           { enableHighAccuracy: true }
         );
       }, 5000);
     }
-    return () => clearInterval(timerRef.current);
+    return () => {
+      clearInterval(timerRef.current);
+      lastPosRef.current = null; // 종료 시 초기화
+    };
   }, [isWatching, activeDrive]);
 
   // 메인 선택 화면
@@ -141,21 +205,66 @@ const DriverMode = () => {
             </Table>
           </Card.Body>
         </Card>
-
         <Card className="border-0 shadow-sm bg-light">
-          <Card.Body>
-            <h5 className="fw-bold mb-3 text-secondary">🔄 진행 중인 운행</h5>
-            <Table hover responsive className="mb-0">
+          <Card.Body className="p-0">
+            {' '}
+            {/* 패딩 조절로 테이블 밀착 */}
+            <div className="p-3 bg-light">
+              <h5 className="fw-bold mb-0 text-secondary">🔄 진행 중인 운행</h5>
+            </div>
+            <Table
+              hover
+              className="mb-0 small bg-white align-middle text-center"
+            >
+              <thead className="table-light">
+                <tr>
+                  <th className="py-2">구분</th>
+                  <th className="text-start ps-3 py-2">노선 정보</th>
+                  <th className="py-2">상태</th>
+                  <th className="text-center pe-3 py-2">설정</th>
+                </tr>
+              </thead>
               <tbody>
                 {activeDrives.map((d) => (
                   <tr key={d._id}>
-                    <td className="align-middle py-3">
-                      {d.routeId?.routeName}
+                    {/* 1. 구분 (실시간 뱃지) */}
+                    <td className="py-3">
+                      <div className="d-flex justify-content-center align-items-center">
+                        <Badge bg="success" className="px-2 py-1">
+                          실시간
+                        </Badge>
+                      </div>
                     </td>
-                    <td className="text-end align-middle">
+
+                    {/* 2. 노선 정보 (왼쪽 정렬) */}
+                    <td className="text-start ps-3 py-3">
+                      <div
+                        className="fw-bold text-primary"
+                        style={{ fontSize: '0.95rem' }}
+                      >
+                        {d.routeId?.routeName}
+                      </div>
+                      <div className="text-muted small">
+                        ID: {d._id.slice(-6)}
+                      </div>
+                    </td>
+
+                    {/* 3. 상태 */}
+                    <td className="py-3">
+                      <Badge
+                        bg={d.status === 'running' ? 'success' : 'secondary'}
+                        className="px-2 py-1"
+                      >
+                        {d.status === 'running' ? '운행중' : '대기중'}
+                      </Badge>
+                    </td>
+
+                    {/* 4. 설정 (접속/도착 버튼) */}
+                    <td className="text-center pe-3 py-3">
                       <Button
-                        variant="success"
+                        variant="outline-success"
                         size="sm"
+                        className="fw-bold px-3"
                         onClick={() => resume(d._id)}
                       >
                         접속
@@ -163,9 +272,14 @@ const DriverMode = () => {
                     </td>
                   </tr>
                 ))}
+
                 {activeDrives.length === 0 && (
                   <tr>
-                    <td className="text-center py-4 text-muted">
+                    <td
+                      colSpan={4}
+                      className="text-center py-5 text-muted bg-white"
+                    >
+                      <div className="mb-2">📭</div>
                       현재 진행 중인 운행이 없습니다.
                     </td>
                   </tr>
@@ -201,6 +315,23 @@ const DriverMode = () => {
         >
           {message}
         </Alert>
+        <div
+          className="bg-dark text-light p-2 rounded shadow-sm"
+          style={{ fontSize: '0.75rem', fontFamily: 'monospace', opacity: 0.8 }}
+        >
+          <div className="fw-bold border-bottom border-secondary mb-1 pb-1">
+            📡 실시간 전송 로그
+          </div>
+          {logs.length === 0 ? (
+            <div className="text-secondary italic">전송 대기 중...</div>
+          ) : (
+            logs.map((log, i) => (
+              <div key={i} style={{ opacity: i === 0 ? 1 : 0.6 }}>
+                {i === 0 && '● '} {log}
+              </div>
+            ))
+          )}
+        </div>
       </div>
 
       <Card className="border-0 flex-grow-1 rounded-0">
@@ -218,58 +349,140 @@ const DriverMode = () => {
         </Card.Header>
 
         <div className="table-responsive">
-          <Table hover className="align-middle mb-0">
-            <thead className="table-light">
+          <Table hover className="mb-0 small bg-white align-middle text-center">
+            <thead className="table-light sticky-top">
               <tr>
-                <th className="ps-3 py-3">정차지</th>
-                <th className="text-center">상태</th>
-                <th className="text-end pe-3">수기</th>
+                <th className="py-2">구분</th>
+                <th className="text-start ps-3 py-2">정차지 정보</th>
+                <th className="py-2">시간</th>
+                <th className="py-2">상태</th>
+                <th className="text-center pe-3 py-2">설정</th>
               </tr>
             </thead>
             <tbody>
-              {checkpoints.map((cp, i) => (
-                <tr
-                  key={i}
-                  className={cp.status === 'arrived' ? 'table-success' : ''}
-                >
-                  <td className="ps-3 py-3">
-                    <div className="fw-bold">{cp.pointName}</div>
-                    <div className="text-muted small">
-                      {cp.arrivalTime
-                        ? new Date(cp.arrivalTime).toLocaleTimeString([], {
-                            hour: '2-digit',
-                            minute: '2-digit',
-                          })
-                        : cp.scheduledTime}
-                    </div>
-                  </td>
-                  <td className="text-center">
-                    <Badge
-                      bg={
-                        cp.status === 'arrived'
-                          ? 'success'
-                          : cp.status === 'approaching'
-                          ? 'warning'
-                          : 'secondary'
-                      }
-                      className="px-2 py-1"
-                    >
-                      {cp.status}
-                    </Badge>
-                  </td>
-                  <td className="text-end pe-3">
-                    {cp.status !== 'arrived' && (
-                      <Button
-                        variant="outline-primary"
-                        size="sm"
-                        onClick={() => manualArrive(i)}
+              {checkpoints.map((cp, i) => {
+                const isArrived = cp.status === 'arrived';
+                const isDeparted = cp.status === 'departed';
+                const isPassed = isArrived || isDeparted; // 도착했거나 이미 떠났거나
+
+                // 1. 구분 뱃지 로직
+                let typeBadge = (
+                  <Badge bg="warning" className="text-dark">
+                    경유
+                  </Badge>
+                );
+                if (i === 0) typeBadge = <Badge bg="primary">출발</Badge>;
+                else if (i === checkpoints.length - 1)
+                  typeBadge = <Badge bg="dark">종점</Badge>;
+
+                return (
+                  <tr
+                    key={i}
+                    className={isPassed ? 'table-success opacity-75' : ''}
+                    style={isArrived ? { borderLeft: '5px solid #198754' } : {}} // 정차 중인 곳 강조
+                  >
+                    {/* 1. 구분 */}
+                    <td className="py-3">
+                      <div className="d-flex justify-content-center align-items-center">
+                        {typeBadge}
+                      </div>
+                    </td>
+
+                    {/* 2. 정차지 정보 */}
+                    <td className="text-start ps-3 py-3">
+                      <div
+                        className={`fw-bold ${
+                          isPassed ? 'text-muted' : 'text-primary'
+                        }`}
+                        style={{ fontSize: '0.95rem' }}
                       >
-                        도착
-                      </Button>
-                    )}
-                  </td>
-                </tr>
-              ))}
+                        {cp.pointName}
+                        {isArrived && (
+                          <Badge bg="success" pill className="ms-2 small blink">
+                            정차중
+                          </Badge>
+                        )}
+                      </div>
+                    </td>
+
+                    {/* 3. 시간 정보 (도착 시간 vs 출발 시간 표시) */}
+                    <td className="py-3">
+                      <div className="fw-bold fs-6">
+                        {isDeparted && cp.departureTime
+                          ? new Date(cp.departureTime).toLocaleTimeString([], {
+                              hour: '2-digit',
+                              minute: '2-digit',
+                            })
+                          : cp.arrivalTime
+                          ? new Date(cp.arrivalTime).toLocaleTimeString([], {
+                              hour: '2-digit',
+                              minute: '2-digit',
+                            })
+                          : cp.scheduledTime}
+                      </div>
+                      <small
+                        className={isPassed ? 'text-success' : 'text-muted'}
+                      >
+                        {isDeparted
+                          ? '출발완료'
+                          : isArrived
+                          ? '도착/정차'
+                          : '예정'}
+                      </small>
+                    </td>
+
+                    {/* 4. 상태 뱃지 */}
+                    <td className="py-3">
+                      <Badge
+                        bg={
+                          isDeparted
+                            ? 'dark'
+                            : isArrived
+                            ? 'success'
+                            : cp.status === 'approaching'
+                            ? 'warning'
+                            : 'secondary'
+                        }
+                        className="px-2 py-1"
+                      >
+                        {isDeparted
+                          ? '출발'
+                          : isArrived
+                          ? '도착'
+                          : cp.status === 'approaching'
+                          ? '곧도착'
+                          : '대기'}
+                      </Badge>
+                    </td>
+
+                    {/* 5. 설정 */}
+                    <td className="text-center pe-3 py-3">
+                      {/* 아직 도착 전일 때만 버튼 표시 */}
+                      {!isPassed && (
+                        <Button
+                          variant="primary"
+                          size="sm"
+                          className="fw-bold px-3 shadow-sm"
+                          onClick={() => manualArrive(i)}
+                        >
+                          도착
+                        </Button>
+                      )}
+                      {isArrived && (
+                        <Badge
+                          bg="outline-success"
+                          className="text-success border border-success"
+                        >
+                          정차 중
+                        </Badge>
+                      )}
+                      {isDeparted && (
+                        <span className="text-success fw-bold">✓</span>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </Table>
         </div>

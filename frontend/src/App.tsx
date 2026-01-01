@@ -91,20 +91,7 @@ const AppContent = () => {
       {/* 1. 상단 네비게이션 */}
       {isPassengerMode ? (
         // [승객용 상단바] (파란색)
-        <Navbar
-          bg="primary"
-          variant="dark"
-          className="px-3 shadow-sm border-0 w-100"
-          style={{ minHeight: '56px' }}
-        >
-          <Navbar.Brand
-            as={Link}
-            to="/"
-            className="fw-bold mx-auto small text-decoration-none"
-          >
-            🛰️ 위치정보제공시스템
-          </Navbar.Brand>
-        </Navbar>
+        <div></div>
       ) : (
         // [관리자용 상단바] (검은색)
         <Navbar
@@ -116,7 +103,7 @@ const AppContent = () => {
           {/* 관리자 로고 클릭 시 /admin으로 이동 */}
           <Navbar.Brand
             as={Link}
-            to="/admin"
+            to="/driving"
             className="fw-bold d-flex align-items-center"
           >
             <span style={{ fontSize: '1.2rem', marginRight: '8px' }}>🚌</span>
@@ -149,7 +136,7 @@ const AppContent = () => {
           <Route path="/passenger" element={<PassengerView />} />
 
           {/* 관리자 페이지 */}
-          <Route path="/admin" element={<AdminHome />} />
+          <Route path="/driving" element={<AdminHome />} />
           <Route path="/create" element={<CreateRoute />} />
           <Route path="/driver" element={<DriverMode />} />
         </Routes>

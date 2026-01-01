@@ -39,7 +39,11 @@ const driveLogSchema = new Schema<IDriveLog>({
       scheduledTime: String,
       arrivalTime: Date,
       departureTime: Date,
-      status: { type: String, default: 'pending' },
+      status: {
+        type: String,
+        enum: ['pending', 'approaching', 'arrived', 'departed'],
+        default: 'pending',
+      },
     },
   ],
   settings: {
