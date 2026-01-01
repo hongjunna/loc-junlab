@@ -9,7 +9,7 @@ services:
       - '5679:5678' # 호스트 5679 -> 컨테이너 5678 (Nginx가 /api 로 받아서 일로 토스함)
     environment:
       # ▼▼▼ 여기에 외부 몽고디비 주소를 넣으세요 (따옴표 필수) ▼▼▼
-      - MONGO_URI="mongodb://admin:wnsfoq1!@mongodb.junlab.xyz:45761/?retryWrites=true&w=majority"
+      - MONGO_URI="mongodb://admin:wnsfoq1%21@mongodb.junlab.xyz:45761/?retryWrites=true&w=majority"
       - PORT=5678
     networks:
       - bus-network
