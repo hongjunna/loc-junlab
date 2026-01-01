@@ -18,4 +18,4 @@ RUN npm run build
 EXPOSE 5678
 
 # 7. 서버 실행 (빌드된 JS 실행)
-CMD ["node", "dist/index.js"]
+CMD ["npm", "start"]
