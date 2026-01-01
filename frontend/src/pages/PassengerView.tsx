@@ -251,7 +251,7 @@ const PassengerView = () => {
         <Table hover className="mb-0 small bg-white align-middle">
           <thead className="table-light sticky-top">
             <tr>
-              <th className="ps-3 py-2">정류소 정보</th>
+              <th className="ps-3 py-2">체크포인트 정보</th>
               <th className="text-center py-2">시간</th>
               <th className="text-end pe-3 py-2">상태</th>
             </tr>
