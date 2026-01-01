@@ -19,7 +19,7 @@ mongoose
 app.get('/', (req, res) => res.send('Bus Tracking Server Running'));
 app.use('/api', routeRoutes);
 
-const PORT = 5679;
+const PORT = 5678;
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
 });
