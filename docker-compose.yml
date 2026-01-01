@@ -1,0 +1,31 @@
+version: '3.8'
+
+services:
+  # 1. 백엔드 (Express)
+  backend:
+    build: ./backend
+    container_name: bus-backend
+    ports:
+      - '5679:5678' # 호스트 5679 -> 컨테이너 5678 (Nginx가 /api 로 받아서 일로 토스함)
+    environment:
+      # ▼▼▼ 여기에 외부 몽고디비 주소를 넣으세요 (따옴표 필수) ▼▼▼
+      - MONGO_URI="mongodb://admin:wnsfoq1!@mongodb.junlab.xyz:45761/?retryWrites=true&w=majority"
+      - PORT=5678
+    networks:
+      - bus-network
+
+  # 2. 프론트엔드 (React + Nginx)
+  frontend:
+    build: ./frontend
+    container_name: bus-frontend
+    ports:
+      - '5678:80' # 호스트 5678 -> 컨테이너 80 (Nginx가 / 로 받아서 일로 토스함)
+    depends_on:
+      - backend
+    networks:
+      - bus-network
+
+networks:
+  bus-network:
+    driver: bridge
+
