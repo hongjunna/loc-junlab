@@ -56,8 +56,8 @@ const STATUS_UI = {
 const TYPE_BADGE = {
   출발지: { bg: 'primary', label: '출발점' },
   경유지: { bg: 'warning', label: '경유' },
-  가상정류소: { bg: 'light', label: '경유(가상)' },
-  도착지: { bg: 'dark', label: '종점' },
+  가상정류소: { bg: 'dark', label: '경유(가상)' },
+  도착지: { bg: 'success', label: '종점' },
 };
 
 const formatTime = (isoString: string) => {
