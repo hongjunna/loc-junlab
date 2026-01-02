@@ -355,8 +355,8 @@ const PassengerView = () => {
                       )}
                     </div>
                   </td>
-                  <td>
-                    {/* <div className="fw-bold fs-6">{timeValue}</div> */}
+                  {/* <td>
+                    <div className="fw-bold fs-6">{timeValue}</div>
                     <small
                       className={
                         isActuallyArrived || isDeparted
@@ -370,7 +370,7 @@ const PassengerView = () => {
                         ? '도착'
                         : '예정'}
                     </small>
-                  </td>
+                  </td> */}
                   <td className="pe-3">
                     <Badge bg={ui.bg} text={ui.text} className="px-2 py-1">
                       {ui.label}

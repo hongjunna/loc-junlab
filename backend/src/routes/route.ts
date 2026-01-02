@@ -36,6 +36,7 @@ router.post('/drive/start', async (req, res) => {
       pointName: p.name,
       scheduledTime: p.scheduledTime,
       status: 'pending',
+      type: p.type,
     }));
 
     const driveLog = new DriveLog({
