@@ -8,6 +8,8 @@ import {
   Modal,
   InputGroup,
   Badge,
+  ListGroup,
+  Spinner,
 } from 'react-bootstrap';
 import {
   MapContainer,
@@ -22,6 +24,7 @@ import {
   type DropResult,
 } from '@hello-pangea/dnd';
 import { createRoute } from '../services/api';
+import axios from 'axios';
 import 'leaflet/dist/leaflet.css';
 
 // [지도 클릭 컴포넌트]
@@ -43,6 +46,81 @@ const LocationPicker = ({ onLocationSelect, selectedPos }: any) => {
       }}
     />
   ) : null;
+};
+
+// --- 기존 정류소 불러오기 모달 ---
+const LoadPointModal = ({ show, onHide, onSelect }: any) => {
+  const [points, setPoints] = useState<any[]>([]);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  React.useEffect(() => {
+    if (show) fetchPoints();
+  }, [show]);
+
+  const fetchPoints = async () => {
+    setLoading(true);
+    try {
+      const res = await axios.get(
+        'https://loc.junlab.xyz/api/routes/data/points'
+      );
+      setPoints(res.data);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const filteredPoints = points.filter((p) =>
+    p.name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  return (
+    <Modal show={show} onHide={onHide} centered scrollable>
+      <Modal.Header closeButton>
+        <Modal.Title>기존 정류소 불러오기</Modal.Title>
+      </Modal.Header>
+      <Modal.Body>
+        <Form.Control
+          type="text"
+          placeholder="정류소명 검색..."
+          className="mb-3"
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          autoFocus
+        />
+        {loading ? (
+          <div className="text-center">
+            <Spinner animation="border" size="sm" />
+          </div>
+        ) : (
+          <ListGroup variant="flush">
+            {filteredPoints.map((p, idx) => (
+              <ListGroup.Item
+                key={idx}
+                action
+                onClick={() => {
+                  onSelect(p);
+                  onHide();
+                }}
+              >
+                <div className="fw-bold">{p.name}</div>
+                <div className="text-muted small">
+                  {p.location.coordinates[1]}, {p.location.coordinates[0]}
+                </div>
+              </ListGroup.Item>
+            ))}
+            {filteredPoints.length === 0 && (
+              <div className="text-center text-muted py-3">
+                검색 결과가 없습니다.
+              </div>
+            )}
+          </ListGroup>
+        )}
+      </Modal.Body>
+    </Modal>
+  );
 };
 
 const CreateRoute = () => {
@@ -70,6 +148,7 @@ const CreateRoute = () => {
     lat: number;
     lng: number;
   } | null>(null);
+  const [showLoadModal, setShowLoadModal] = useState(false);
 
   const handleMapClick = (latlng: { lat: number; lng: number }) =>
     setTempLocation(latlng);
@@ -84,6 +163,15 @@ const CreateRoute = () => {
     } else {
       alert('위치를 클릭해주세요.');
     }
+  };
+
+  const handlePointSelect = (point: any) => {
+    setInput({
+      ...input,
+      name: point.name,
+      lat: String(point.location.coordinates[1]),
+      lng: String(point.location.coordinates[0]),
+    });
   };
 
   const addPointToList = () => {
@@ -187,6 +275,18 @@ const CreateRoute = () => {
     } catch (err) {
       alert('❌ 저장 실패');
     }
+  };
+
+  // 지도 초기 중심 좌표 계산 (마지막 포인트 기준)
+  const getMapCenter = (): [number, number] => {
+    if (points.length > 0) {
+      const lastPoint = points[points.length - 1];
+      return [
+        lastPoint.location.coordinates[1],
+        lastPoint.location.coordinates[0],
+      ];
+    }
+    return [37.5665, 126.978];
   };
 
   // 렌더링 분리
@@ -320,16 +420,26 @@ const CreateRoute = () => {
         <Card.Body>
           <div className="d-flex justify-content-between align-items-center mb-3">
             <h6 className="fw-bold mb-0">📍 지점 정보 입력</h6>
-            <Button
-              variant="outline-primary"
-              size="sm"
-              onClick={() => {
-                setTempLocation(null);
-                setShowMap(true);
-              }}
-            >
-              🗺️ 지도 선택
-            </Button>
+            <div>
+              <Button
+                variant="outline-secondary"
+                size="sm"
+                className="me-2"
+                onClick={() => setShowLoadModal(true)}
+              >
+                📂 불러오기
+              </Button>
+              <Button
+                variant="outline-primary"
+                size="sm"
+                onClick={() => {
+                  setTempLocation(null);
+                  setShowMap(true);
+                }}
+              >
+                🗺️ 지도 선택
+              </Button>
+            </div>
           </div>
 
           <Form.Group className="mb-2">
@@ -488,7 +598,7 @@ const CreateRoute = () => {
         <Modal.Body className="p-0" style={{ height: '400px' }}>
           {showMap && (
             <MapContainer
-              center={[37.5665, 126.978]}
+              center={getMapCenter()}
               zoom={13}
               style={{ width: '100%', height: '100%' }}
             >
@@ -510,6 +620,12 @@ const CreateRoute = () => {
           </Button>
         </Modal.Footer>
       </Modal>
+
+      <LoadPointModal
+        show={showLoadModal}
+        onHide={() => setShowLoadModal(false)}
+        onSelect={handlePointSelect}
+      />
     </div>
   );
 };

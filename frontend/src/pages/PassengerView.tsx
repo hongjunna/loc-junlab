@@ -13,6 +13,7 @@ import 'leaflet/dist/leaflet.css';
 
 import { getAdjustedTime } from '../services/time_helper';
 import AutoZoom from './components/AutoZoom'; // 컴포넌트 분리 추천
+import { TYPE_BADGE } from './ui_constants';
 
 // --- 상수 및 스타일 매핑 ---
 const STATUS_UI = {
@@ -51,13 +52,6 @@ const STATUS_UI = {
     rowClass: '',
     accent: '',
   },
-};
-
-const TYPE_BADGE = {
-  출발지: { bg: 'primary', label: '출발점' },
-  경유지: { bg: 'warning', label: '경유' },
-  가상정류소: { bg: 'dark', label: '경유(가상)' },
-  도착지: { bg: 'success', label: '종점' },
 };
 
 const formatTime = (isoString: string) => {

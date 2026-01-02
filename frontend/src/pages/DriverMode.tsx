@@ -2,6 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { Card, Button, Table, Badge, Alert } from 'react-bootstrap';
 import { getRoutes, startDrive, updateLocation } from '../services/api';
+import { TYPE_BADGE } from './ui_constants';
+import RouteEditModal from './components/RouteEditModal';
 
 const DriverMode = () => {
   const [routes, setRoutes] = useState<any[]>([]);
@@ -15,6 +17,8 @@ const DriverMode = () => {
   const timerRef = useRef<any>(null);
   const [logs, setLogs] = useState<string[]>([]);
   const lastPosRef = useRef<{ lat: number; lng: number } | null>(null);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editRouteId, setEditRouteId] = useState<string | null>(null);
   const addLog = (msg: string) => {
     const now = new Date().toLocaleTimeString([], {
       hour: '2-digit',
@@ -222,6 +226,17 @@ const DriverMode = () => {
                     <td className="align-middle py-3">{r.routeName}</td>
                     <td className="text-end align-middle">
                       <Button
+                        variant="outline-secondary"
+                        size="sm"
+                        className="me-2"
+                        onClick={() => {
+                          setEditRouteId(r._id);
+                          setShowEditModal(true);
+                        }}
+                      >
+                        수정
+                      </Button>
+                      <Button
                         variant="primary"
                         size="sm"
                         onClick={() => start(r._id)}
@@ -318,6 +333,12 @@ const DriverMode = () => {
             </Table>
           </Card.Body>
         </Card>
+        <RouteEditModal
+          show={showEditModal}
+          onHide={() => setShowEditModal(false)}
+          routeId={editRouteId}
+          onUpdate={fetchInitialData}
+        />
       </div>
     );
   }
@@ -396,14 +417,13 @@ const DriverMode = () => {
                 const isPassed = isArrived || isDeparted; // 도착했거나 이미 떠났거나
 
                 // 1. 구분 뱃지 로직
-                let typeBadge = (
-                  <Badge bg="warning" className="text-dark">
-                    경유
-                  </Badge>
+                const badgeInfo = TYPE_BADGE[cp.type] || {
+                  bg: 'secondary',
+                  label: cp.type || '기타',
+                };
+                const typeBadge = (
+                  <Badge bg={badgeInfo.bg}>{badgeInfo.label}</Badge>
                 );
-                if (i === 0) typeBadge = <Badge bg="primary">출발</Badge>;
-                else if (i === checkpoints.length - 1)
-                  typeBadge = <Badge bg="dark">종점</Badge>;
 
                 return (
                   <tr
@@ -527,6 +547,12 @@ const DriverMode = () => {
       >
         🏁 운행 종료 마감
       </Button>
+      <RouteEditModal
+        show={showEditModal}
+        onHide={() => setShowEditModal(false)}
+        routeId={editRouteId}
+        onUpdate={fetchInitialData}
+      />
     </div>
   );
 };

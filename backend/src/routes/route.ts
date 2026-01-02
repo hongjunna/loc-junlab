@@ -22,6 +22,27 @@ router.get('/routes', async (req, res) => {
   res.json(routes);
 });
 
+// 모든 정류소(포인트) 목록 조회 (중복 제거)
+router.get('/routes/data/points', async (req, res) => {
+  try {
+    const routes = await Route.find({}, 'points');
+    const allPoints = routes.flatMap((r) => r.points || []);
+
+    // 이름과 좌표가 모두 같은 경우 중복 제거
+    const uniquePoints = Array.from(
+      new Map(
+        allPoints.map((p) => [
+          `${p.name}-${p.location.coordinates[0]}-${p.location.coordinates[1]}`,
+          p,
+        ])
+      ).values()
+    );
+    res.json(uniquePoints);
+  } catch (err) {
+    res.status(500).json({ error: '정류소 목록 조회 실패' });
+  }
+});
+
 // 특정 노선 조회 (수정용)
 router.get('/routes/:id', async (req, res) => {
   try {
