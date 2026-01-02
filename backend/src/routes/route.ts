@@ -22,6 +22,36 @@ router.get('/routes', async (req, res) => {
   res.json(routes);
 });
 
+// 특정 노선 조회 (수정용)
+router.get('/routes/:id', async (req, res) => {
+  try {
+    const route = await Route.findById(req.params.id);
+    if (!route)
+      return res.status(404).json({ error: '노선을 찾을 수 없습니다.' });
+    res.json(route);
+  } catch (err) {
+    res.status(500).json({ error: '노선 조회 실패' });
+  }
+});
+
+// 노선 수정
+router.put('/routes/:id', async (req, res) => {
+  try {
+    const updatedRoute = await Route.findByIdAndUpdate(
+      req.params.id,
+      req.body,
+      {
+        new: true, // 업데이트된 문서를 반환
+      }
+    );
+    if (!updatedRoute)
+      return res.status(404).json({ error: '노선을 찾을 수 없습니다.' });
+    res.json(updatedRoute);
+  } catch (err) {
+    res.status(400).json({ error: '노선 수정 실패' });
+  }
+});
+
 // 2-2 & 2-6. 운행 시작 (노선 선택 후 운행 기록 생성)
 router.post('/drive/start', async (req, res) => {
   try {
