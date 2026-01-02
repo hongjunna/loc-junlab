@@ -327,6 +327,18 @@ const RouteEditModal = ({
     }
   };
 
+  const handleDeleteRoute = async () => {
+    if (!routeId) return;
+    if (!window.confirm('정말로 이 노선을 삭제하시겠습니까?')) return;
+    try {
+      await axios.delete(`https://loc.junlab.xyz/api/routes/${routeId}`);
+      onUpdate();
+      onHide();
+    } catch (err) {
+      setError('노선 삭제 중 오류가 발생했습니다.');
+    }
+  };
+
   // 지도 초기 중심 좌표 계산 (마지막 포인트 기준)
   const getMapCenter = (): [number, number] => {
     if (points.length > 0) {
@@ -624,6 +636,13 @@ const RouteEditModal = ({
         )}
       </Modal.Body>
       <Modal.Footer>
+        <Button
+          variant="danger"
+          onClick={handleDeleteRoute}
+          className="me-auto"
+        >
+          노선 삭제
+        </Button>
         <Button variant="secondary" onClick={onHide}>
           취소
         </Button>

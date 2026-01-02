@@ -118,16 +118,22 @@ const DriverMode = () => {
   // [수정됨] 무조건 클립보드 복사만 수행
   const handleShare = async () => {
     if (!activeDrive) return;
-
     const shareUrl = `${window.location.origin}/passenger?id=${activeDrive._id}`;
+    const startPoint = checkpoints[0]?.pointName || '?';
+    const endPoint = checkpoints[checkpoints.length - 1]?.pointName || '?';
+    const shareText = `🚗 지금 이동중이에요!
+[출발지] ${startPoint}
+[도착지] ${endPoint}
+실시간 이동 상황을 확인해 보세요.
+${shareUrl}`;
 
     try {
-      await navigator.clipboard.writeText(shareUrl);
-      alert('📋 운행 정보 링크가 복사되었습니다!');
+      await navigator.clipboard.writeText(shareText);
+      alert('📋 운행 정보가 복사되었습니다!');
     } catch (err) {
       console.error('클립보드 복사 실패:', err);
       // 보안상 이유로 복사가 안 될 경우를 대비해 수동 복사 유도
-      prompt('링크를 복사해주세요:', shareUrl);
+      prompt('전체 텍스트를 복사해주세요:', shareText);
     }
   };
 
@@ -174,7 +180,7 @@ const DriverMode = () => {
           },
           { enableHighAccuracy: true }
         );
-      }, 5000);
+      }, 1000);
     }
     return () => {
       clearInterval(timerRef.current);

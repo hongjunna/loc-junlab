@@ -18,14 +18,14 @@ router.post('/routes', async (req, res) => {
 
 // 노선 목록 조회
 router.get('/routes', async (req, res) => {
-  const routes = await Route.find();
+  const routes = await Route.find({ is_deleted: { $ne: true } });
   res.json(routes);
 });
 
 // 모든 정류소(포인트) 목록 조회 (중복 제거)
 router.get('/routes/data/points', async (req, res) => {
   try {
-    const routes = await Route.find({}, 'points');
+    const routes = await Route.find({ is_deleted: { $ne: true } }, 'points');
     const allPoints = routes.flatMap((r) => r.points || []);
 
     // 이름과 좌표가 모두 같은 경우 중복 제거
@@ -70,6 +70,20 @@ router.put('/routes/:id', async (req, res) => {
     res.json(updatedRoute);
   } catch (err) {
     res.status(400).json({ error: '노선 수정 실패' });
+  }
+});
+
+// 노선 삭제 (Soft Delete)
+router.delete('/routes/:id', async (req, res) => {
+  try {
+    const result = await Route.findByIdAndUpdate(req.params.id, {
+      is_deleted: true,
+    });
+    if (!result)
+      return res.status(404).json({ error: '노선을 찾을 수 없습니다.' });
+    res.json({ message: '노선이 삭제되었습니다.' });
+  } catch (err) {
+    res.status(500).json({ error: '노선 삭제 실패' });
   }
 });
 

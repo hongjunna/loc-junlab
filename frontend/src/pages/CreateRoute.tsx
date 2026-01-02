@@ -123,6 +123,59 @@ const LoadPointModal = ({ show, onHide, onSelect }: any) => {
   );
 };
 
+// --- 역노선 생성 모달 ---
+const ReverseRouteModal = ({ show, onHide, onSelect }: any) => {
+  const [routes, setRoutes] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  React.useEffect(() => {
+    if (show) fetchRoutes();
+  }, [show]);
+
+  const fetchRoutes = async () => {
+    setLoading(true);
+    try {
+      const res = await axios.get('https://loc.junlab.xyz/api/routes');
+      setRoutes(res.data);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <Modal show={show} onHide={onHide} centered scrollable>
+      <Modal.Header closeButton>
+        <Modal.Title>역노선 생성 (기존 노선 선택)</Modal.Title>
+      </Modal.Header>
+      <Modal.Body>
+        {loading ? (
+          <div className="text-center">
+            <Spinner animation="border" size="sm" />
+          </div>
+        ) : (
+          <ListGroup variant="flush">
+            {routes.map((r) => (
+              <ListGroup.Item key={r._id} action onClick={() => onSelect(r)}>
+                <div className="fw-bold">{r.routeName}</div>
+                <div className="text-muted small">
+                  총 {r.points?.length || 0}개 지점
+                </div>
+              </ListGroup.Item>
+            ))}
+            {routes.length === 0 && (
+              <div className="text-center text-muted py-3">
+                노선이 없습니다.
+              </div>
+            )}
+          </ListGroup>
+        )}
+      </Modal.Body>
+    </Modal>
+  );
+};
+
 const CreateRoute = () => {
   const [routeName, setRouteName] = useState('');
   const [points, setPoints] = useState<any[]>([]);
@@ -149,6 +202,7 @@ const CreateRoute = () => {
     lng: number;
   } | null>(null);
   const [showLoadModal, setShowLoadModal] = useState(false);
+  const [showReverseModal, setShowReverseModal] = useState(false);
 
   const handleMapClick = (latlng: { lat: number; lng: number }) =>
     setTempLocation(latlng);
@@ -172,6 +226,42 @@ const CreateRoute = () => {
       lat: String(point.location.coordinates[1]),
       lng: String(point.location.coordinates[0]),
     });
+  };
+
+  const handleReverseSelect = (route: any) => {
+    if (!route.points) return;
+
+    // 1. 포인트 역순 정렬 및 타입/시간 재설정
+    const reversedPoints = [...route.points]
+      .reverse()
+      .map((p: any, idx: number, arr: any[]) => {
+        let newType = p.type;
+
+        // 첫 지점 -> 출발지
+        if (idx === 0) newType = '출발지';
+        // 마지막 지점 -> 도착지
+        else if (idx === arr.length - 1) newType = '도착지';
+        // 그 외 출발/도착지였던 것들 -> 경유지 (중간에 껴있게 되므로)
+        else if (p.type === '출발지' || p.type === '도착지') newType = '경유지';
+
+        return {
+          ...p,
+          id: `rev-${Date.now()}-${idx}`, // DnD용 새 ID
+          type: newType,
+          scheduledTime: '', // 시간은 역방향이므로 초기화
+        };
+      });
+
+    setRouteName(`${route.routeName} (역방향)`);
+    setPoints(reversedPoints);
+
+    if (route.settings) {
+      setRadiusSettings({
+        approach: (route.settings.approachRadius || 0.1) * 1000,
+        arrival: (route.settings.arrivalRadius || 0.02) * 1000,
+      });
+    }
+    setShowReverseModal(false);
   };
 
   const addPointToList = () => {
@@ -357,7 +447,16 @@ const CreateRoute = () => {
 
   return (
     <div className="full-width-content p-3">
-      <h4 className="fw-bold mb-3">🛠 노선 등록</h4>
+      <div className="d-flex justify-content-between align-items-center mb-3">
+        <h4 className="fw-bold mb-0">🛠 노선 등록</h4>
+        <Button
+          variant="outline-dark"
+          size="sm"
+          onClick={() => setShowReverseModal(true)}
+        >
+          🔄 역노선 생성하기
+        </Button>
+      </div>
 
       {/* 1. 노선 명칭 및 반경 설정 */}
       <Card className="border-0 shadow-sm mb-4">
@@ -625,6 +724,12 @@ const CreateRoute = () => {
         show={showLoadModal}
         onHide={() => setShowLoadModal(false)}
         onSelect={handlePointSelect}
+      />
+
+      <ReverseRouteModal
+        show={showReverseModal}
+        onHide={() => setShowReverseModal(false)}
+        onSelect={handleReverseSelect}
       />
     </div>
   );
