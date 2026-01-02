@@ -223,7 +223,7 @@ const PassengerView = () => {
                     {stop.pointName}
                   </b>
                   <br />
-                  {stop.scheduledTime}
+                  {/* {stop.scheduledTime} */}
                 </div>
               </Tooltip>
             </CircleMarker>
@@ -259,11 +259,11 @@ const PassengerView = () => {
           <Badge bg={stops[0]?.status === 'pending' ? 'warning' : 'success'}>
             {stops[0]?.status === 'pending' ? '운행대기' : '운행중'}
           </Badge>
-          <small className="text-muted">
+          {/* <small className="text-muted">
             {stops[0]?.status === 'pending'
               ? '운행 시작 대기 중'
               : `기점 출발 시각: ${formatTime(data.startTime)}`}
-          </small>
+          </small> */}
         </div>
       </div>
       <small className="text-primary fw-bold text-end p-1">
@@ -280,7 +280,7 @@ const PassengerView = () => {
             <tr>
               <th>구분</th>
               <th className="text-start ps-3">체크포인트 정보</th>
-              <th>도착예정시간</th>
+              {/* <th>도착예정시간</th> */}
               <th>상태</th>
             </tr>
           </thead>
@@ -356,7 +356,7 @@ const PassengerView = () => {
                     </div>
                   </td>
                   <td>
-                    <div className="fw-bold fs-6">{timeValue}</div>
+                    {/* <div className="fw-bold fs-6">{timeValue}</div> */}
                     <small
                       className={
                         isActuallyArrived || isDeparted
