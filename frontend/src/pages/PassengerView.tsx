@@ -103,7 +103,7 @@ const PassengerView = () => {
   // 가공된 정류장 데이터 (useMemo로 최적화)
   const stops = useMemo(() => {
     if (!data || !data.checkpoints || !data.routeId?.points) return [];
-    return data.checkpoints
+    const rawStops = data.checkpoints
       .map((cp: any, idx: number) => {
         const pointInfo = data.routeId.points[idx];
         if (!pointInfo || !pointInfo.location) return null; // 데이터 매칭 실패 시 건너뜀
@@ -115,6 +115,18 @@ const PassengerView = () => {
         };
       })
       .filter(Boolean);
+
+    // 출발지가 아직 출발하지 않았다면 상태 강제 조정 (접근 경로 숨김)
+    if (rawStops.length > 0 && rawStops[0].status !== 'departed') {
+      return rawStops.map((s: any, i: number) => {
+        if (i === 0) {
+          // 출발지: 접근 중(approaching)일 때만 도착(arrived)으로 표시하여 경로 숨김
+          return s.status === 'approaching' ? { ...s, status: 'arrived' } : s;
+        }
+        return { ...s, status: 'pending' };
+      });
+    }
+    return rawStops;
   }, [data]);
 
   // 상태 인덱스 계산
@@ -142,13 +154,18 @@ const PassengerView = () => {
     );
 
   // 차량 위치가 없거나 좌표가 깨졌을 경우를 대비한 방어 로직
-  const carPos: [number, number] =
+  let carPos: [number, number] =
     data.currentLocation && data.currentLocation.coordinates
       ? [
           data.currentLocation.coordinates[1],
           data.currentLocation.coordinates[0],
         ]
       : [37.5665, 126.978]; // 기본값 (서울)
+
+  // 출발지 출발 전에는 차량 위치를 출발지로 고정 (이동 경로 숨김)
+  if (stops.length > 0 && data.checkpoints?.[0]?.status !== 'departed') {
+    carPos = [stops[0].lat, stops[0].lng];
+  }
 
   const nextStopPos: [number, number] | null =
     nextIdx !== -1 ? [stops[nextIdx].lat, stops[nextIdx].lng] : null;

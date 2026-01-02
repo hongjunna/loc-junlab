@@ -76,9 +76,11 @@ router.put('/routes/:id', async (req, res) => {
 // 노선 삭제 (Soft Delete)
 router.delete('/routes/:id', async (req, res) => {
   try {
-    const result = await Route.findByIdAndUpdate(req.params.id, {
-      is_deleted: true,
-    });
+    const result = await Route.findByIdAndUpdate(
+      req.params.id,
+      { is_deleted: true },
+      { strict: false } // 스키마에 정의되지 않은 필드도 강제로 업데이트 허용
+    );
     if (!result)
       return res.status(404).json({ error: '노선을 찾을 수 없습니다.' });
     res.json({ message: '노선이 삭제되었습니다.' });
