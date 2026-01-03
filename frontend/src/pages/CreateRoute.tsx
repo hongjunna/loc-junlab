@@ -183,7 +183,7 @@ const CreateRoute = () => {
   // [추가됨] 반경 설정 상태 (기본값: 접근 100m, 도착 20m)
   const [radiusSettings, setRadiusSettings] = useState({
     approach: 100, // m 단위
-    arrival: 20, // m 단위
+    arrival: 50, // m 단위
   });
 
   const [input, setInput] = useState({

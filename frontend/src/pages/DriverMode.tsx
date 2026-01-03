@@ -17,6 +17,7 @@ const DriverMode = () => {
   const timerRef = useRef<any>(null);
   const [logs, setLogs] = useState<string[]>([]);
   const lastPosRef = useRef<{ lat: number; lng: number } | null>(null);
+  const lastSendTimeRef = useRef<number>(0);
   const [showEditModal, setShowEditModal] = useState(false);
   const [editRouteId, setEditRouteId] = useState<string | null>(null);
   const addLog = (msg: string) => {
@@ -142,35 +143,61 @@ ${shareUrl}`;
       timerRef.current = setInterval(() => {
         navigator.geolocation.getCurrentPosition(
           async (p) => {
-            const { latitude: curLat, longitude: curLng } = p.coords;
+            const { latitude: curLat, longitude: curLng, speed } = p.coords;
+            const now = Date.now();
 
-            // 1. 이전 위치가 있고, 거리가 100m 미만이면 전송 스킵
-            if (lastPosRef.current) {
-              const distance = getDistance(
-                lastPosRef.current.lat,
-                lastPosRef.current.lng,
-                curLat,
-                curLng
-              );
+            // [속도 기반 전송 로직]
+            // speed(m/s) -> km/h 변환 (null인 경우 -1)
+            const currentSpeedKmh = speed !== null ? speed * 3.6 : -1;
+            const MIN_SPEED_KMH = 5; // 5km/h
+            const SEND_INTERVAL_MS = 5000; // 5초
+            const timeDiff = now - lastSendTimeRef.current;
 
-              const distance_threshold = 20;
-              if (distance < distance_threshold) {
-                addLog(
-                  `이동 거리 부족 (${Math.round(
-                    distance
-                  )}m / ${distance_threshold}m) - 전송 스킵`
+            let shouldSend = false;
+
+            if (currentSpeedKmh >= 0) {
+              // 1. 속도 정보가 있는 경우
+              if (!lastPosRef.current) {
+                shouldSend = true; // 첫 전송
+              } else if (
+                currentSpeedKmh > MIN_SPEED_KMH &&
+                timeDiff >= SEND_INTERVAL_MS
+              ) {
+                shouldSend = true;
+              }
+            } else {
+              // 2. 속도 정보가 없는 경우 (Fallback: 거리 + 시간)
+              if (!lastPosRef.current) {
+                shouldSend = true;
+              } else {
+                const distance = getDistance(
+                  lastPosRef.current.lat,
+                  lastPosRef.current.lng,
+                  curLat,
+                  curLng
                 );
-                return;
+                // 20m 이상 이동 & 5초 경과 시 전송
+                if (distance > 20 && timeDiff >= SEND_INTERVAL_MS) {
+                  shouldSend = true;
+                }
               }
             }
+
+            if (!shouldSend) return;
 
             try {
               const res = await updateLocation(activeDrive._id, curLat, curLng);
               lastPosRef.current = { lat: curLat, lng: curLng };
+              lastSendTimeRef.current = now;
 
               setCheckpoints(res.data.checkpoints || []);
               if (res.data.message) setMessage(res.data.message);
-              addLog('위치 정보 전송 성공');
+
+              const speedLog =
+                currentSpeedKmh >= 0
+                  ? ` (${currentSpeedKmh.toFixed(1)}km/h)`
+                  : ` (${currentSpeedKmh.toFixed(1)}km/h)[대체]`;
+              addLog(`위치 전송 성공${speedLog}`);
             } catch (err) {
               addLog('위치 전송 실패 (서버 오류)');
             }
@@ -185,6 +212,7 @@ ${shareUrl}`;
     return () => {
       clearInterval(timerRef.current);
       lastPosRef.current = null; // 종료 시 초기화
+      lastSendTimeRef.current = 0;
     };
   }, [isWatching, activeDrive]);
 
