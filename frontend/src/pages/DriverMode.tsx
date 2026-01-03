@@ -21,10 +21,12 @@ const DriverMode = () => {
   const [showEditModal, setShowEditModal] = useState(false);
   const [editRouteId, setEditRouteId] = useState<string | null>(null);
   const addLog = (msg: string) => {
-    const now = new Date().toLocaleTimeString([], {
+    const now = new Date().toLocaleTimeString('ko-KR', {
       hour: '2-digit',
       minute: '2-digit',
       second: '2-digit',
+      hour12: false,
+      timeZone: 'Asia/Seoul',
     });
     const newLog = `[${now}] ${msg}`;
     setLogs((prev) => [newLog, ...prev].slice(0, 3)); // 최신순 3개 유지
