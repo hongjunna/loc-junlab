@@ -1,9 +1,9 @@
 import { Router } from 'express';
 import mongoose from 'mongoose';
 
-const router = Router();
+const gps_router = Router();
 
-router.post('/gps/log', async (req, res) => {
+gps_router.post('/gps/log', async (req, res) => {
   try {
     const logData = {
       ...req.body,
@@ -19,5 +19,5 @@ router.post('/gps/log', async (req, res) => {
   }
 });
 
-export default router;
+export default gps_router;
 

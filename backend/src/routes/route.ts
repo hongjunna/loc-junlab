@@ -2,8 +2,11 @@ import { Router } from 'express';
 import { getDistance } from 'geolib'; // 거리 계산 라이브러리 설치 필요: npm install geolib
 import { DriveLog } from '../models/drive_log';
 import { Route } from '../models/route';
+import gpsRouter from './gps';
 
 const router = Router();
+
+router.use(gpsRouter);
 
 // 2-1. 노선 등록 API
 router.post('/routes', async (req, res) => {
