@@ -32,6 +32,27 @@ const DriverMode = () => {
     setLogs((prev) => [newLog, ...prev].slice(0, 3)); // 최신순 3개 유지
   };
 
+  const dataReprocessing = (points: any[]) => {
+    const reversedPoints = [...points].reverse();
+    const reprovessedPoints = [];
+    let isDepartedFound = false;
+    for (let checkpoint of reversedPoints) {
+      if (checkpoint.status === 'departed') {
+        isDepartedFound = true;
+        reprovessedPoints.push(checkpoint);
+        continue;
+      }
+      if (checkpoint.status !== 'departed' && isDepartedFound) {
+        checkpoint.status = 'departed';
+        reprovessedPoints.push(checkpoint);
+        continue;
+      }
+      reprovessedPoints.push(checkpoint);
+    }
+    const complitedProceessedPoints = reprovessedPoints.reverse();
+    setCheckpoints(complitedProceessedPoints);
+  };
+
   const getDistance = (
     lat1: number,
     lon1: number,
@@ -75,7 +96,7 @@ const DriverMode = () => {
       .get(`https://loc.junlab.xyz/api/drive/${id}`)
       .then((res) => {
         setActiveDrive(res.data);
-        setCheckpoints(res.data.checkpoints || []);
+        dataReprocessing(res.data.checkpoints || []);
         setIsWatching(true);
         localStorage.setItem('activeDriveId', id);
       })
@@ -99,7 +120,7 @@ const DriverMode = () => {
       const res = await axios.patch(
         `https://loc.junlab.xyz/api/drive/${activeDrive._id}/checkpoint/${idx}/complete`
       );
-      setCheckpoints(res.data.checkpoints || []);
+      dataReprocessing(res.data.checkpoints || []);
     } catch (err) {
       alert('수기 도착 처리 실패');
     }
@@ -192,7 +213,7 @@ ${shareUrl}`;
               lastPosRef.current = { lat: curLat, lng: curLng };
               lastSendTimeRef.current = now;
 
-              setCheckpoints(res.data.checkpoints || []);
+              dataReprocessing(res.data.checkpoints || []);
               if (res.data.message) setMessage(res.data.message);
 
               const speedLog =
