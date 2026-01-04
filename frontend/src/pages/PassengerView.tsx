@@ -27,7 +27,7 @@ const STATUS_UI = {
   arrived: {
     bg: 'success',
     text: 'white',
-    label: '도착',
+    label: '도착/통과중',
     rowClass: 'table-success',
     accent: '#198754',
   },
@@ -77,7 +77,7 @@ const PassengerView = () => {
     try {
       const res = await axios.get(`https://loc.junlab.xyz/api/drive/${id}`);
       setData(res.data);
-      setCountdown(15);
+      setCountdown(10);
     } catch (e) {
       setError('데이터 로딩 실패');
     }
@@ -210,7 +210,6 @@ const PassengerView = () => {
             isAutoZoom={isAutoZoom}
             setIsAutoZoom={setIsAutoZoom}
           />
-
           {/* 차량 마커 */}
           {data.status === 'running' &&
             stops[0]?.status !== 'pending' &&
@@ -226,11 +225,10 @@ const PassengerView = () => {
                 }}
               >
                 <Tooltip direction="top" permanent>
-                  <strong>현재 차량 위치</strong>
+                  <strong>현재 이동 위치</strong>
                 </Tooltip>
               </CircleMarker>
             )}
-
           {/* 정류장 마커 */}
           {stops.map((stop: any, idx: number) => (
             <CircleMarker
@@ -239,7 +237,7 @@ const PassengerView = () => {
               radius={7}
               pathOptions={{
                 color: 'white',
-                fillColor: stop.status === 'arrived' ? '#888888' : '#ff4d4f',
+                fillColor: stop.status === 'arrived' ? '#ff4d4f' : '#888888',
                 fillOpacity: 1,
                 weight: 2,
               }}
@@ -248,7 +246,7 @@ const PassengerView = () => {
                 <div className="text-center small">
                   <b
                     style={{
-                      color: stop.status === 'arrived' ? '#888888' : '#ff4d4f',
+                      color: stop.status === 'arrived' ? '#ff4d4f' : '#888888',
                     }}
                   >
                     {stop.pointName}
@@ -302,21 +300,22 @@ const PassengerView = () => {
               ? '운행중'
               : '운행종료'}
           </Badge>
-          {/* <small className="text-muted">
+          <small className="text-muted">
             {stops[0]?.status === 'pending'
               ? '운행 시작 대기 중'
               : `기점 출발 시각: ${formatTime(data.startTime)}`}
-          </small> */}
+          </small>
         </div>
       </div>
       <small className="text-primary fw-bold text-end p-1">
         {countdown}초 후 정보 자동 갱신
       </small>
       <span
-        className="mb-2 text-muted small"
+        className="mb-2 text-muted small me-1"
         style={{ fontSize: '12px', textAlign: 'end' }}
       >
-        *도착/출발시간은 예정이 아닌 해당 포인트에{' '}
+        *도착/출발시간은 예정이 아닌 해당 포인트에
+        <br />
         <strong>실제로 도착하고 출발한 시간을</strong> 나타냅니다.
       </span>
       {/* 3. 리스트 영역 */}
@@ -327,7 +326,6 @@ const PassengerView = () => {
         >
           <thead className="table-light sticky-top">
             <tr>
-              <th></th>
               <th className="ps-3">체크포인트 정보</th>
               <th>도착시간</th>
               <th>출발시간</th>
@@ -380,11 +378,6 @@ const PassengerView = () => {
                     ui.accent ? { borderLeft: `5px solid ${ui.accent}` } : {}
                   }
                 >
-                  <td>
-                    {isNext && !isActuallyArrived && !isApproaching && (
-                      <span>📍</span>
-                    )}
-                  </td>
                   <td className="text-start ps-3 py-3">
                     <div className="d-flex align-items-center gap-2">
                       <Badge bg={type.bg}>{type.label}</Badge>
