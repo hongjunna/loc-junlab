@@ -103,7 +103,7 @@ const PassengerView = () => {
   // 가공된 정류장 데이터 (useMemo로 최적화)
   const stops = useMemo(() => {
     if (!data || !data.checkpoints || !data.routeId?.points) return [];
-    const rawStops = data.checkpoints
+    let rawStops = data.checkpoints
       .map((cp: any, idx: number) => {
         const pointInfo = data.routeId.points[idx];
         if (!pointInfo || !pointInfo.location) return null; // 데이터 매칭 실패 시 건너뜀
@@ -115,6 +115,26 @@ const PassengerView = () => {
         };
       })
       .filter(Boolean);
+
+    // [데이터 후처리] 뒤에서부터 확인하여 도착/출발 완료된 지점 이전은 모두 departed 처리
+    const reversedPoints = [...rawStops].reverse();
+    const reprocessedPoints = [];
+    let isPassedFound = false;
+
+    for (const checkpoint of reversedPoints) {
+      if (checkpoint.status === 'departed' || checkpoint.status === 'arrived') {
+        isPassedFound = true;
+        reprocessedPoints.push(checkpoint);
+        continue;
+      }
+      if (isPassedFound && checkpoint.status !== 'departed') {
+        // 이미 지나간 구간이므로 departed로 강제 변경
+        reprocessedPoints.push({ ...checkpoint, status: 'departed' });
+        continue;
+      }
+      reprocessedPoints.push(checkpoint);
+    }
+    rawStops = reprocessedPoints.reverse();
 
     // 출발지가 아직 출발하지 않았다면 상태 강제 조정 (접근 경로 숨김)
     if (rawStops.length > 0 && rawStops[0].status !== 'departed') {
@@ -280,7 +300,13 @@ const PassengerView = () => {
       <small className="text-primary fw-bold text-end p-1">
         {countdown}초 후 정보 자동 갱신
       </small>
-
+      <span
+        className="mb-2 text-muted small"
+        style={{ fontSize: '12px', textAlign: 'end' }}
+      >
+        *도착/출발시간은 예정이 아닌 해당 포인트에{' '}
+        <strong>실제로 도착하고 출발한 시간을</strong> 나타냅니다.
+      </span>
       {/* 3. 리스트 영역 */}
       <div className="flex-grow-1 overflow-auto bg-light mb-5">
         <Table
@@ -289,14 +315,16 @@ const PassengerView = () => {
         >
           <thead className="table-light sticky-top">
             <tr>
-              <th>구분</th>
-              <th className="text-start ps-3">체크포인트 정보</th>
-              {/* <th>도착예정시간</th> */}
+              <th></th>
+              <th className="ps-3">체크포인트 정보</th>
+              <th>도착시간</th>
+              <th>출발시간</th>
               <th>상태</th>
             </tr>
           </thead>
           <tbody>
             {stops.map((stop: any, i: number) => {
+              console.log(stop);
               const isActuallyArrived = i === lastArrivedIdx;
               const isDeparted =
                 stop.status === 'departed' ||
@@ -316,18 +344,21 @@ const PassengerView = () => {
                 : 'pending';
               const ui = STATUS_UI[uiStatus];
               const type = TYPE_BADGE[stop.type as keyof typeof TYPE_BADGE];
+              const arrivalTime = stop.arrivalTime;
+              const departureTime = stop.departureTime;
+              const isPassed = uiStatus === 'departed';
 
               // 시간 계산
-              const timeValue =
-                isDeparted && stop.departureTime
-                  ? formatTime(stop.departureTime)
-                  : isActuallyArrived && stop.arrivalTime
-                  ? formatTime(stop.arrivalTime)
-                  : getAdjustedTime(
-                      stop.scheduledTime,
-                      stops[0].scheduledTime,
-                      data.startTime ? new Date(data.startTime) : null
-                    );
+              // const timeValue =
+              //   isDeparted && stop.departureTime
+              //     ? formatTime(stop.departureTime)
+              //     : isActuallyArrived && stop.arrivalTime
+              //     ? formatTime(stop.arrivalTime)
+              //     : getAdjustedTime(
+              //         stop.scheduledTime,
+              //         stops[0].scheduledTime,
+              //         data.startTime ? new Date(data.startTime) : null
+              //       );
 
               return (
                 <tr
@@ -337,55 +368,72 @@ const PassengerView = () => {
                     ui.accent ? { borderLeft: `5px solid ${ui.accent}` } : {}
                   }
                 >
-                  <td className="py-3">
-                    <div className="d-flex justify-content-center align-items-center gap-1">
-                      {isNext && !isActuallyArrived && !isApproaching && (
-                        <span>📍</span>
-                      )}
-                      <Badge bg={type.bg}>{type.label}</Badge>
-                    </div>
+                  <td>
+                    {isNext && !isActuallyArrived && !isApproaching && (
+                      <span>📍</span>
+                    )}
                   </td>
                   <td className="text-start ps-3 py-3">
                     <div className="d-flex align-items-center gap-2">
+                      <Badge bg={type.bg}>{type.label}</Badge>
                       <span
                         className={`fw-bold ${
-                          isActuallyArrived ? 'text-success' : 'text-primary'
+                          isActuallyArrived ? 'text-success' : ''
                         }`}
+                        style={isPassed ? { color: 'gray' } : {}}
                       >
                         {stop.pointName}
                       </span>
-                      {isNext && !isActuallyArrived && !isApproaching && (
+                      {/* {isNext && !isActuallyArrived && !isApproaching && (
                         <Badge bg="warning" text="dark" pill>
                           다음 목적지
                         </Badge>
                       )}
                       {isActuallyArrived && (
                         <Badge bg="success" pill className="blink">
-                          정차중
+                          정차/통과중
                         </Badge>
-                      )}
+                      )} */}
                     </div>
                   </td>
-                  {/* <td>
-                    <div className="fw-bold fs-6">{timeValue}</div>
-                    <small
-                      className={
-                        isActuallyArrived || isDeparted
-                          ? 'text-success'
-                          : 'text-muted'
-                      }
+                  <td>
+                    <div className="fw-bold fs-6">
+                      {arrivalTime ? formatTime(arrivalTime) : '-'}
+                    </div>
+                    {/* <small
+                      className={isDeparted ? 'text-success' : 'text-muted'}
                     >
                       {isDeparted
                         ? '출발'
                         : isActuallyArrived
                         ? '도착'
                         : '예정'}
-                    </small>
-                  </td> */}
+                    </small> */}
+                  </td>
+                  <td>
+                    <div className="fw-bold fs-6">
+                      {departureTime ? formatTime(departureTime) : '-'}
+                    </div>
+                    {/* <small
+                      className={isDeparted ? 'text-success' : 'text-muted'}
+                    >
+                      {isDeparted
+                        ? '출발'
+                        : isActuallyArrived
+                        ? '도착'
+                        : '예정'}
+                    </small> */}
+                  </td>
                   <td className="pe-3">
-                    <Badge bg={ui.bg} text={ui.text} className="px-2 py-1">
-                      {ui.label}
-                    </Badge>
+                    {isNext && !isActuallyArrived && !isApproaching ? (
+                      <Badge bg="warning" text="dark" pill>
+                        다음 목적지
+                      </Badge>
+                    ) : (
+                      <Badge bg={ui.bg} text={ui.text} className="px-2 py-1">
+                        {ui.label}
+                      </Badge>
+                    )}
                   </td>
                 </tr>
               );
