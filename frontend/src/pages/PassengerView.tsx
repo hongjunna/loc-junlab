@@ -287,8 +287,20 @@ const PassengerView = () => {
       <div className="p-3 bg-white border-bottom text-center shadow-sm">
         <h5 className="fw-bold mb-1">{data.routeId?.routeName}</h5>
         <div className="d-flex justify-content-center align-items-center gap-2">
-          <Badge bg={stops[0]?.status === 'pending' ? 'warning' : 'success'}>
-            {stops[0]?.status === 'pending' ? '운행대기' : '운행중'}
+          <Badge
+            bg={
+              stops[0]?.status === 'pending'
+                ? 'secondary'
+                : data.status === 'running'
+                ? 'success'
+                : 'dark'
+            }
+          >
+            {stops[0]?.status === 'pending'
+              ? '운행대기'
+              : data.status === 'running'
+              ? '운행중'
+              : '운행종료'}
           </Badge>
           {/* <small className="text-muted">
             {stops[0]?.status === 'pending'
