@@ -23,6 +23,8 @@ const DriverMode = () => {
   const lastSendTimeRef = useRef<number>(0);
   const [showEditModal, setShowEditModal] = useState(false);
   const [editRouteId, setEditRouteId] = useState<string | null>(null);
+  // [Safari 대응] TTS 객체가 가비지 컬렉션되지 않도록 참조 유지
+  const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
 
   // TTS (Text-to-Speech) 기능 구현
   const speak = (text: string, playChime: boolean = false) => {
@@ -36,11 +38,20 @@ const DriverMode = () => {
       window.speechSynthesis.cancel();
 
       const utterance = new SpeechSynthesisUtterance(text);
+      utteranceRef.current = utterance; // 참조 저장 (GC 방지)
+
       utterance.lang = 'ko-KR';
       utterance.rate = 1.0; // 속도 (0.1 ~ 10)
       utterance.pitch = 1.0; // 음높이 (0 ~ 2)
-      utterance.onend = () => resolve(); // 말하기가 끝나면 Promise 해결
-      utterance.onerror = () => resolve(); // 에러 발생 시에도 해결
+
+      utterance.onend = () => {
+        utteranceRef.current = null;
+        resolve();
+      };
+      utterance.onerror = () => {
+        utteranceRef.current = null;
+        resolve();
+      };
 
       // 한국어 목소리 선택 (Chrome 등에서 목소리 로드 대기 필요)
       const voices = window.speechSynthesis.getVoices();
@@ -51,22 +62,17 @@ const DriverMode = () => {
         utterance.voice = korVoice;
       }
 
-      const doSpeak = () => {
-        window.speechSynthesis.speak(utterance);
-      };
+      // [모바일 호환성 수정]
+      // iOS/Android 정책상 사용자 제스처(클릭) 내에서 즉시 실행해야 함.
+      // 오디오(onended)를 기다리면 제스처 컨텍스트가 소멸되어 TTS가 차단됨.
+      // 따라서 효과음과 TTS를 동시에 실행하거나, TTS를 우선 실행해야 함.
+      window.speechSynthesis.speak(utterance);
 
       if (playChime) {
         const audio = new Audio(bellSound);
-        // 오디오 재생이 끝나면 TTS 실행
-        audio.onended = doSpeak;
-        audio.onerror = () => doSpeak();
         audio.play().catch((e) => {
           console.error('오디오 재생 실패:', e);
-          // 오디오 재생에 실패하면 바로 TTS 실행
-          doSpeak();
         });
-      } else {
-        doSpeak();
       }
     });
   };
@@ -189,7 +195,6 @@ const DriverMode = () => {
       .get(`https://loc.junlab.xyz/api/drive/${id}`)
       .then((res) => {
         setActiveDrive(res.data);
-        console.log(res.data);
         dataReprocessing(res.data.checkpoints || [], res.data.routeId?.points);
         setIsWatching(true);
         localStorage.setItem('activeDriveId', id);
@@ -250,7 +255,22 @@ const DriverMode = () => {
 ${shareUrl}`;
 
     try {
-      await navigator.clipboard.writeText(shareText);
+      // navigator.clipboard는 HTTPS 또는 localhost에서만 사용 가능
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(shareText);
+      } else {
+        // 비보안 컨텍스트(HTTP)를 위한 Fallback 처리
+        const textArea = document.createElement('textarea');
+        textArea.value = shareText;
+        textArea.style.position = 'fixed'; // 화면 흔들림 방지
+        textArea.style.left = '-9999px';
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        const successful = document.execCommand('copy');
+        document.body.removeChild(textArea);
+        if (!successful) throw new Error('Fallback copy failed');
+      }
       alert('📋 운행 정보가 복사되었습니다!');
     } catch (err) {
       console.error('클립보드 복사 실패:', err);
