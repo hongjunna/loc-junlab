@@ -80,7 +80,7 @@ const PassengerView = () => {
   const [data, setData] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
   const [isAutoZoom, setIsAutoZoom] = useState(true);
-  const [countdown, setCountdown] = useState(15);
+  const [countdown, setCountdown] = useState(5);
   const [drivingStatus, setDrivingStatus] = useState<string>('loading');
   const [selectedPos, setSelectedPos] = useState<[number, number] | null>(null);
   const [userPos, setUserPos] = useState<[number, number] | null>(null);
@@ -128,7 +128,7 @@ const PassengerView = () => {
       const res = await axios.get(`https://loc.junlab.xyz/api/drive/${id}`);
       setData(res.data);
       console.log(res.data);
-      setCountdown(10);
+      setCountdown(5);
     } catch (e) {
       setError('데이터 로딩 실패');
     }
@@ -159,7 +159,7 @@ const PassengerView = () => {
       setCountdown((prev) => {
         if (prev <= 1) {
           fetchData();
-          return 15;
+          return 5;
         }
         return prev - 1;
       });
