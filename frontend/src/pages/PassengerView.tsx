@@ -127,6 +127,7 @@ const PassengerView = () => {
     try {
       const res = await axios.get(`https://loc.junlab.xyz/api/drive/${id}`);
       setData(res.data);
+      console.log(res.data);
       setCountdown(10);
     } catch (e) {
       setError('데이터 로딩 실패');
@@ -203,7 +204,7 @@ const PassengerView = () => {
     rawStops = reprocessedPoints.reverse();
 
     // 출발지가 아직 출발하지 않았다면 상태 강제 조정 (접근 경로 숨김)
-    if (drivingStatus !== '운행대기') {
+    if (drivingStatus === '운행대기') {
       return rawStops.map((stop: any, i: number) => {
         if (i === 0) {
           // 출발지: 접근 중(approaching)일 때만 도착(arrived)으로 표시하여 경로 숨김
@@ -215,7 +216,7 @@ const PassengerView = () => {
       });
     }
     return rawStops;
-  }, [data]);
+  }, [data, drivingStatus]);
 
   // 상태 인덱스 계산
   const { nextIdx, lastArrivedIdx } = useMemo(() => {
