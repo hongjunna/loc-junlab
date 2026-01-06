@@ -258,9 +258,17 @@ router.patch(
       const driveLog = await DriveLog.findById(driveLogId);
 
       if (driveLog && driveLog.checkpoints[Number(index)]) {
-        const cp = driveLog.checkpoints[Number(index)];
-        cp.status = 'arrived';
-        cp.arrivalTime = new Date();
+        const targetIdx = Number(index);
+        const now = new Date();
+
+        // 선택한 정류장(targetIdx)을 포함하여 그 이전의 모든 정류장을 순회
+        for (let i = 0; i <= targetIdx; i++) {
+          const cp = driveLog.checkpoints[i];
+          if (cp.status !== 'arrived' && cp.status !== 'departed') {
+            cp.status = 'arrived';
+            cp.arrivalTime = now;
+          }
+        }
         await driveLog.save();
         res.json(driveLog);
       } else {
