@@ -74,8 +74,8 @@ const DriverMode = () => {
 
   useEffect(() => {
     fetchInitialData();
-    const saved = localStorage.getItem('activeDriveId');
-    if (saved) resume(saved);
+    //   const saved = localStorage.getItem('activeDriveId');
+    //   if (saved) resume(saved);
   }, []);
 
   const fetchInitialData = async () => {

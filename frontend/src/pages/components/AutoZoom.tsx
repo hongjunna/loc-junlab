@@ -44,25 +44,32 @@ const AutoZoom = ({
     if (!isAutoZoom || !carPos) return;
 
     // 1. 화면에 포함시킬 좌표 리스트 생성 (차량 위치는 필수)
-    const pointsToInclude: L.LatLngExpression[] = [carPos];
+    const rawPoints: [number, number][] = [carPos];
 
     // 2. 이전 정류장과 다음 정류장이 있다면 추가
-    if (prevStopPos) pointsToInclude.push(prevStopPos);
-    if (nextStopPos) pointsToInclude.push(nextStopPos);
+    if (prevStopPos) rawPoints.push(prevStopPos);
+    if (nextStopPos) rawPoints.push(nextStopPos);
 
-    if (pointsToInclude.length > 1) {
+    // 3. 중복 좌표 제거 (운행 대기 중일 때 carPos와 nextStopPos가 같을 수 있음)
+    const uniquePoints = rawPoints.filter(
+      (p, index, self) =>
+        index === self.findIndex((t) => t[0] === p[0] && t[1] === p[1])
+    );
+
+    if (uniquePoints.length > 1) {
       // 여러 지점이 있을 경우 모든 점이 포함되는 영역(Bounds) 계산
-      const bounds = L.latLngBounds(pointsToInclude);
+      const bounds = L.latLngBounds(uniquePoints);
 
       map.fitBounds(bounds, {
         padding: [70, 70], // 상하좌우 여백 (px)
-        maxZoom: 17, // 너무 과하게 확대되는 것 방지
+        maxZoom: 15, // 너무 과하게 확대되는 것 방지 (17 -> 15)
         animate: true,
         duration: 1.0, // 부드러운 이동 시간 (초)
       });
     } else {
       // 좌표가 차량 위치 하나뿐일 경우 해당 위치로 중심 이동
-      map.setView(carPos, 16, {
+      map.setView(carPos, 14, {
+        // 16 -> 14로 변경 (더 넓게 보이도록)
         animate: true,
       });
     }
@@ -72,3 +79,4 @@ const AutoZoom = ({
 };
 
 export default AutoZoom;
+

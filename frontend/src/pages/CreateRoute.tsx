@@ -465,14 +465,14 @@ const CreateRoute = () => {
             <Form.Label className="fw-bold small">노선 명칭</Form.Label>
             <Form.Control
               size="lg"
-              placeholder="예: 101번 버스"
+              placeholder="예: 서울-대전"
               value={routeName}
               onChange={(e) => setRouteName(e.target.value)}
             />
           </Form.Group>
 
           {/* [추가됨] 반경 설정 섹션 */}
-          <h6 className="fw-bold small text-muted mb-2">
+          {/* <h6 className="fw-bold small text-muted mb-2">
             🚩 운행 판정 범위 설정 (기본값 적용됨)
           </h6>
           <Row className="g-2">
@@ -510,7 +510,7 @@ const CreateRoute = () => {
                 <InputGroup.Text>m 이내</InputGroup.Text>
               </InputGroup>
             </Col>
-          </Row>
+          </Row> */}
         </Card.Body>
       </Card>
 
