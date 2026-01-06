@@ -665,6 +665,7 @@ ${shareUrl}`;
           onClick={async () => {
             speak('운행을 종료합니다.', true);
             setActiveDrive(null);
+            fetchInitialData();
           }}
           style={{ width: '80px' }}
         >
