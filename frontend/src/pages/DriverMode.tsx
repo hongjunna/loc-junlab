@@ -14,7 +14,7 @@ const DriverMode = () => {
   const [activeDrive, setActiveDrive] = useState<any>(null);
   const [checkpoints, setCheckpoints] = useState<any[]>([]);
   const [message, setMessage] = useState(
-    '노선을 선택하거나 진행 중인 운행에 연결하세요.'
+    '경로을 선택하거나 진행 중인 운행에 연결하세요.'
   );
   const [isWatching, setIsWatching] = useState(false);
   const timerRef = useRef<any>(null);
@@ -135,9 +135,9 @@ const DriverMode = () => {
 
       if (checkpoint.status === 'arrived') {
         if (isArrivedFound) {
-          // 이미 더 나중의 정류장이 '도착' 상태이므로, 이 정류장은 이미 떠난 것으로 간주
+          // 이미 더 나중의 체크포인트이 '도착' 상태이므로, 이 체크포인트은 이미 떠난 것으로 간주
           checkpoint.status = 'departed';
-          isDepartedFound = true; // 이전 정류장들도 모두 출발 처리
+          isDepartedFound = true; // 이전 체크포인트들도 모두 출발 처리
         } else {
           // 가장 최신의 '도착' 상태 (현재 정차 중)
           isArrivedFound = true;
@@ -391,9 +391,9 @@ ${shareUrl}`;
     return (
       <div className="driver-view-container">
         <div className="driver-header" style={{ flexDirection: 'row' }}>
-          <h1 className="driver-title">🚌 기사님 모드</h1>
+          <h1 className="driver-title">🚌 운전자 모드</h1>
           <Link to="/create" className="btn btn-outline-primary">
-            노선 등록하러 가기
+            경로 등록하러 가기
           </Link>
         </div>
 
