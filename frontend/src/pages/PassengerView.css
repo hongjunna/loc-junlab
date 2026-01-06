@@ -1,0 +1,259 @@
+:root {
+  --primary-color: #2776f4ce; /* Indigo */
+  --text-main: #1e293b;
+  --text-sub: #64748b;
+  --bg-color: #f8fafc;
+  --card-bg: #ffffff;
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+}
+
+.passenger-view-container {
+  height: 100vh; /* Fallback */
+  height: 100dvh; /* 모바일 브라우저 주소창 대응 */
+  width: 100%;
+  max-width: 480px; /* PC 화면 너비 제한 */
+  position: fixed; /* 전체 화면 고정 */
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%); /* 중앙 정렬 */
+  display: flex;
+  flex-direction: column;
+  background-color: var(--bg-color);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+    'Helvetica Neue', Arial, sans-serif;
+  overflow: hidden;
+  box-shadow: 0 0 20px rgba(0, 0, 0, 0.1); /* PC에서 경계 구분 그림자 */
+}
+
+/* 지도 영역 */
+.map-wrapper {
+  height: 45vh;
+  position: relative;
+  z-index: 1;
+}
+
+/* 지도 위 플로팅 버튼 */
+.map-floating-btn {
+  height: 30px;
+  padding: 10px;
+  border-radius: 50%;
+  background-color: white;
+  border: none;
+  box-shadow: var(--shadow-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2rem;
+  cursor: pointer;
+  transition: transform 0.2s ease;
+  z-index: 1000;
+}
+
+.map-floating-btn:active {
+  transform: scale(0.95);
+}
+
+.btn-my-location {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+}
+
+.btn-reset-zoom {
+  position: absolute;
+  bottom: 30px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: auto;
+  padding: 0 20px;
+  border-radius: 24px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: white;
+  background-color: var(--primary-color);
+}
+
+/* 하단 정보 시트 (Bottom Sheet 스타일) */
+.info-sheet-container {
+  flex: 1;
+  background-color: var(--bg-color);
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  z-index: 2;
+  margin-top: -24px; /* 지도 위로 겹치게 */
+  border-top-left-radius: 24px;
+  border-top-right-radius: 24px;
+  overflow: hidden;
+  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.05);
+}
+
+.info-header {
+  background-color: var(--card-bg);
+  padding: 10px 10px 16px;
+  border-bottom: 1px solid #e2e8f0;
+  text-align: center;
+}
+
+.route-title {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: var(--text-main);
+  margin-bottom: 8px;
+  letter-spacing: -0.5px;
+}
+
+.status-badge-wrapper {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background-color: #f1f5f9;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  color: var(--text-sub);
+  font-weight: 600;
+}
+
+.status-message-box {
+  margin-top: 16px;
+  padding: 12px;
+  border-radius: 12px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.status-message-box.waiting {
+  background-color: #fffbeb;
+  color: #b45309;
+  border: 1px solid #fcd34d;
+}
+.status-message-box.ended {
+  background-color: #fef2f2;
+  color: #b91c1c;
+  border: 1px solid #fca5a5;
+}
+
+.refresh-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 20px;
+  background-color: #f8fafc;
+  border-bottom: 1px solid #e2e8f0;
+  font-size: 0.75rem;
+  color: var(--text-sub);
+}
+
+/* 테이블 영역 */
+.timetable-wrapper {
+  flex: 1;
+  overflow-y: auto;
+  background-color: var(--bg-color);
+  padding-bottom: calc(
+    40px + env(safe-area-inset-bottom)
+  ); /* 하단 안전 영역 확보 */
+  overscroll-behavior: contain; /* 스크롤 체이닝 방지 */
+}
+
+.custom-table {
+  width: 100%;
+  padding: 0 5px;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.custom-table th {
+  position: sticky;
+  top: 0;
+  background-color: #f8fafc;
+  color: var(--text-sub);
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 12px 10px;
+  text-align: center;
+  border-bottom: 1px solid #e2e8f0;
+  z-index: 10;
+}
+
+.custom-table th:first-child {
+  text-align: left;
+  padding-left: 20px;
+}
+
+.custom-table td {
+  padding: 16px 10px;
+  font-size: 0.9rem;
+  color: var(--text-main);
+  border-bottom: 1px solid #f1f5f9;
+  background-color: var(--card-bg);
+  vertical-align: middle;
+}
+
+.row-item {
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+.row-item:active td {
+  background-color: #f1f5f9;
+}
+
+/* 상태별 행 스타일 */
+.row-departed td {
+  color: #94a3b8;
+  background-color: #fcfcfc;
+}
+.row-arrived td {
+  background-color: #ecfdf5;
+  color: #065f46;
+}
+.row-arrived td:first-child {
+  border-left: 4px solid #10b981;
+}
+.row-approaching td {
+  background-color: #eff6ff;
+}
+.row-approaching td:first-child {
+  border-left: 4px solid #3b82f6;
+}
+.row-next td {
+  background-color: #fffbeb;
+}
+.row-next td:first-child {
+  border-left: 4px solid #f59e0b;
+}
+
+/* 포인트 뱃지 */
+.point-badge {
+  font-size: 0.7rem;
+  padding: 3px 6px;
+  border-radius: 4px;
+  font-weight: 700;
+  margin-right: 6px;
+}
+
+/* 지도/시간표 토글 버튼 */
+.btn-toggle-expand {
+  background-color: #f1f5f9;
+  color: var(--text-sub);
+  border: none;
+  padding: 6px 16px;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.2s;
+  cursor: pointer;
+}
+
+.btn-toggle-expand:hover {
+  background-color: #e2e8f0;
+  color: var(--text-main);
+}
+
