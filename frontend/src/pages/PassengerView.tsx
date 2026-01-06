@@ -475,8 +475,8 @@ const PassengerView = () => {
             <thead>
               <tr>
                 <th>체크포인트</th>
-                <th>도착시간</th>
-                <th>출발시간</th>
+                <th>도착</th>
+                <th>출발</th>
                 <th>비고</th>
               </tr>
             </thead>
