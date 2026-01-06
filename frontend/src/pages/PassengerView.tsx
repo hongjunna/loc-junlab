@@ -331,7 +331,7 @@ const PassengerView = () => {
                 weight: 2,
               }}
             >
-              <Tooltip direction="top">내 위치</Tooltip>
+              <Tooltip direction="left">내 위치</Tooltip>
             </CircleMarker>
           )}
           {/* 차량 마커 */}
@@ -347,7 +347,7 @@ const PassengerView = () => {
                   weight: 3,
                 }}
               >
-                <Tooltip direction="top" permanent>
+                <Tooltip direction="left" permanent>
                   <strong>현재 이동 위치</strong>
                 </Tooltip>
               </CircleMarker>
@@ -365,7 +365,7 @@ const PassengerView = () => {
                 weight: 2,
               }}
             >
-              <Tooltip direction="bottom" permanent>
+              <Tooltip direction="right" permanent>
                 {stop.type === '가상정류소' ? (
                   <span className="badge text-bg-secondary">통과</span>
                 ) : stop.type === '출발지' ? (
