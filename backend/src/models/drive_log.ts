@@ -17,10 +17,6 @@ export interface IDriveLog extends Document {
     type: 'Point';
     coordinates: [number, number];
   };
-  prevLocation?: {
-    type: 'Point';
-    coordinates: [number, number];
-  };
   checkpoints: IVisitRecord[];
   settings: {
     approachRadius: number; // 안내방송/접근 판정 반경 (km)
@@ -36,17 +32,6 @@ const driveLogSchema = new Schema<IDriveLog>({
   currentLocation: {
     type: { type: String, enum: ['Point'], default: 'Point' },
     coordinates: { type: [Number], default: [0, 0] },
-  },
-  prevLocation: {
-    type: {
-      type: String,
-      enum: ['Point'],
-      default: 'Point',
-    },
-    coordinates: {
-      type: [Number],
-      default: undefined,
-    },
   },
   checkpoints: [
     {

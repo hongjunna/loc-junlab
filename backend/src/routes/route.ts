@@ -6,27 +6,6 @@ import gpsRouter from './gps';
 
 const router = Router();
 
-// --- Vector helpers for fail-safe ---
-const toRad = (deg: number) => (deg * Math.PI) / 180;
-
-const vectorBetween = (
-  from: { latitude: number; longitude: number },
-  to: { latitude: number; longitude: number }
-) => ({
-  x:
-    (to.longitude - from.longitude) *
-    Math.cos(toRad((from.latitude + to.latitude) / 2)),
-  y: to.latitude - from.latitude,
-});
-
-const normalize = (v: { x: number; y: number }) => {
-  const len = Math.sqrt(v.x * v.x + v.y * v.y);
-  if (len === 0) return { x: 0, y: 0 };
-  return { x: v.x / len, y: v.y / len };
-};
-
-const dot = (a: { x: number; y: number }, b: { x: number; y: number }) =>
-  a.x * b.x + a.y * b.y;
 router.use(gpsRouter);
 
 // 2-1. 노선 등록 API
@@ -173,16 +152,6 @@ router.post('/drive/:driveLogId/location', async (req, res) => {
     let message = '';
     let playAnnouncement = false;
 
-    // 이전 위치 계산용 (벡터 기반 자동 통과)
-    const prevLocation = driveLog.prevLocation?.coordinates
-      ? {
-          longitude: driveLog.prevLocation.coordinates[0],
-          latitude: driveLog.prevLocation.coordinates[1],
-        }
-      : null;
-
-    const curLocation = { latitude, longitude };
-
     // 모든 체크포인트를 순회
     for (let i = 0; i < driveLog.checkpoints.length; i++) {
       const cp = driveLog.checkpoints[i];
@@ -239,29 +208,13 @@ router.post('/drive/:driveLogId/location', async (req, res) => {
       }
 
       /**
-       * 4. 자동 통과 판정 (Vector-based Fail-safe)
-       * - B 정류소에 도착을 찍지 못했지만
-       * - B에서 멀어지고 있고
-       * - C 방향으로 확실히 진행 중이며
-       * - C가 B보다 가까워졌다면
-       * → B를 통과한 것으로 추론
+       * 4. 자동 통과 판정 (Fail-safe)
+       * 접근 중(Approaching)이었으나 도착(Arrived)을 찍지 못하고
+       * 이미 다음 정류장에 더 가까워진 경우
        */
-      if (
-        cp.status === 'pending' &&
-        prevLocation &&
-        i < driveLog.checkpoints.length - 1
-      ) {
+      if (cp.status === 'approaching' && i < driveLog.checkpoints.length - 1) {
         const nextRoutePoint = route.points[i + 1];
-
-        const distPrevToB =
-          getDistance(prevLocation, {
-            latitude: routePoint.location.coordinates[1],
-            longitude: routePoint.location.coordinates[0],
-          }) / 1000;
-
-        const distNowToB = distance;
-
-        const distNowToNext =
+        const distToNext =
           getDistance(
             { latitude, longitude },
             {
@@ -270,45 +223,16 @@ router.post('/drive/:driveLogId/location', async (req, res) => {
             }
           ) / 1000;
 
-        const moveVec = normalize(vectorBetween(prevLocation, curLocation));
-
-        const routeVec = normalize(
-          vectorBetween(
-            {
-              latitude: routePoint.location.coordinates[1],
-              longitude: routePoint.location.coordinates[0],
-            },
-            {
-              latitude: nextRoutePoint.location.coordinates[1],
-              longitude: nextRoutePoint.location.coordinates[0],
-            }
-          )
-        );
-
-        const dirScore = dot(moveVec, routeVec);
-
-        const DIR_THRESHOLD = 0.5;
-
-        if (
-          distNowToB > distPrevToB && // B에서 멀어지고 있음
-          distNowToNext < distNowToB && // C가 더 가까움
-          dirScore > DIR_THRESHOLD // C 방향 진행
-        ) {
-          const now = new Date();
+        // 다음 정류소가 현재 정류소보다 더 가깝고, 현재 정류소 반경을 벗어났다면
+        if (distToNext < distance && distance > arrivalRadius) {
           cp.status = 'departed';
-          cp.arrivalTime = cp.arrivalTime ?? now;
-          cp.departureTime = now;
+          if (!cp.arrivalTime) cp.arrivalTime = new Date(); // 도착 기록 없으면 보정
+          cp.departureTime = new Date();
           message = `${cp.pointName}을(를) 통과했습니다.`;
           break;
         }
       }
     }
-
-    // 이전 위치 저장 (다음 요청에서 벡터 계산용)
-    driveLog.prevLocation = {
-      type: 'Point',
-      coordinates: [longitude, latitude],
-    };
 
     // 변경 사항 저장
     await driveLog.save();
