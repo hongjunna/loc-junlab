@@ -183,123 +183,79 @@ router.post('/drive/:driveLogId/location', async (req, res) => {
 
     const curLocation = { latitude, longitude };
 
-    // 모든 체크포인트를 순회
-    for (let i = 0; i < driveLog.checkpoints.length; i++) {
+    // 오직 currentIndex의 체크포인트만 판정
+    const i = driveLog.currentIndex;
+    if (i >= driveLog.checkpoints.length) {
+      // 모든 체크포인트를 지난 경우
+    } else {
       const cp = driveLog.checkpoints[i];
       const routePoint = route.points[i];
 
       // 이미 해당 정류소를 떠난 경우 계산 생략
-      if (cp.status === 'departed') continue;
-
-      const distance =
-        getDistance(
-          { latitude, longitude },
-          {
-            latitude: routePoint.location.coordinates[1],
-            longitude: routePoint.location.coordinates[0],
-          }
-        ) / 1000; // km 단위
-
-      /**
-       * 1. 접근 판정 (Pending -> Approaching)
-       */
-      if (cp.status === 'pending' && distance <= approachRadius) {
-        cp.status = 'approaching';
-        message = `${cp.pointName}에 접근 중입니다.`;
-        if (routePoint.useAnnouncement) playAnnouncement = true;
-        break; // 하나라도 변하면 DB 저장 후 종료 (데이터 안정성)
-      }
-
-      /**
-       * 2. 도착 판정 (Approaching -> Arrived)
-       */
-      if (cp.status === 'approaching' && distance <= arrivalRadius) {
-        cp.status = 'arrived';
-        const now = new Date();
-        cp.arrivalTime = now;
-        if (i === 0) {
-          driveLog.startTime = now;
-          console.log(
-            `[Start-Sync] 첫 정류장 도착에 따른 시작 시각 동기화: ${now}`
-          );
-        }
-        message = `${cp.pointName}에 도착했습니다.`;
-        break;
-      }
-
-      /**
-       * 3. 출발 판정 (Arrived -> Departed)
-       * 차가 도착 상태였는데 반경을 1.2배(오차 범위) 이상 벗어났을 때
-       */
-      if (cp.status === 'arrived' && distance > arrivalRadius * 1.2) {
-        cp.status = 'departed';
-        cp.departureTime = new Date();
-        message = `${cp.pointName}에서 출발했습니다.`;
-        break;
-      }
-
-      /**
-       * 4. 자동 통과 판정 (Vector-based Fail-safe)
-       * - B 정류소에 도착을 찍지 못했지만
-       * - B에서 멀어지고 있고
-       * - C 방향으로 확실히 진행 중이며
-       * - C가 B보다 가까워졌다면
-       * → B를 통과한 것으로 추론
-       */
-      if (
-        cp.status === 'pending' &&
-        prevLocation &&
-        i < driveLog.checkpoints.length - 1
-      ) {
-        const nextRoutePoint = route.points[i + 1];
-
-        const distPrevToB =
-          getDistance(prevLocation, {
-            latitude: routePoint.location.coordinates[1],
-            longitude: routePoint.location.coordinates[0],
-          }) / 1000;
-
-        const distNowToB = distance;
-
-        const distNowToNext =
+      if (cp.status !== 'departed') {
+        const distanceToPoint =
           getDistance(
             { latitude, longitude },
             {
-              latitude: nextRoutePoint.location.coordinates[1],
-              longitude: nextRoutePoint.location.coordinates[0],
-            }
-          ) / 1000;
-
-        const moveVec = normalize(vectorBetween(prevLocation, curLocation));
-
-        const routeVec = normalize(
-          vectorBetween(
-            {
               latitude: routePoint.location.coordinates[1],
               longitude: routePoint.location.coordinates[0],
-            },
-            {
-              latitude: nextRoutePoint.location.coordinates[1],
-              longitude: nextRoutePoint.location.coordinates[0],
             }
-          )
-        );
+          ) / 1000; // km 단위
 
-        const dirScore = dot(moveVec, routeVec);
+        // --- minDistance 추적 ---
+        if (cp.minDistance == null || distanceToPoint < cp.minDistance) {
+          cp.minDistance = distanceToPoint;
+        }
 
-        const DIR_THRESHOLD = 0.5;
+        // 접근 판정 (Pending -> Approaching)
+        if (cp.status === 'pending' && distanceToPoint <= approachRadius) {
+          cp.status = 'approaching';
+          message = `${cp.pointName}에 접근 중입니다.`;
+          if (routePoint.useAnnouncement) playAnnouncement = true;
+        }
 
-        if (
-          distNowToB > distPrevToB && // B에서 멀어지고 있음
-          distNowToNext < distNowToB && // C가 더 가까움
-          dirScore > DIR_THRESHOLD // C 방향 진행
-        ) {
+        // 도착 판정 (Approaching -> Arrived)
+        if (cp.status === 'approaching' && distanceToPoint <= arrivalRadius) {
+          cp.status = 'arrived';
           const now = new Date();
+          cp.arrivalTime = now;
+          if (i === 0) {
+            driveLog.startTime = now;
+            console.log(
+              `[Start-Sync] 첫 정류장 도착에 따른 시작 시각 동기화: ${now}`
+            );
+          }
+          message = `${cp.pointName}에 도착했습니다.`;
+        }
+
+        // 출발 판정 (Arrived -> Departed)
+        if (cp.status === 'arrived' && distanceToPoint > arrivalRadius * 1.2) {
           cp.status = 'departed';
-          cp.arrivalTime = cp.arrivalTime ?? now;
+          cp.departureTime = new Date();
+          message = `${cp.pointName}에서 출발했습니다.`;
+        }
+
+        // --- 단일 체크포인트에만 적용: auto pass/auto depart ---
+        // ARRIVAL_RADIUS, PASS_DELTA는 기존 값 사용. (기존과 호환)
+        const ARRIVAL_RADIUS = arrivalRadius;
+        const PASS_DELTA = 0.02;
+        const passedCurrent =
+          distanceToPoint < ARRIVAL_RADIUS ||
+          (cp.minDistance != null &&
+            distanceToPoint > cp.minDistance + PASS_DELTA);
+
+        if (passedCurrent) {
+          const now = new Date();
+
+          if (cp.status === 'pending') {
+            cp.status = 'arrived';
+            cp.arrivalTime = now;
+          }
+
+          cp.status = 'departed';
           cp.departureTime = now;
-          message = `${cp.pointName}을(를) 통과했습니다.`;
-          break;
+
+          driveLog.currentIndex += 1;
         }
       }
     }

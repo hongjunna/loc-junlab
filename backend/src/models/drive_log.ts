@@ -6,6 +6,7 @@ interface IVisitRecord {
   arrivalTime?: Date; // 실제 도착 시각
   departureTime?: Date; // 실제 출발 시각
   status: 'pending' | 'approaching' | 'arrived' | 'departed';
+  minDistance?: number | null; // 최소 접근 거리 (km)
 }
 
 export interface IDriveLog extends Document {
@@ -26,6 +27,7 @@ export interface IDriveLog extends Document {
     approachRadius: number; // 안내방송/접근 판정 반경 (km)
     arrivalRadius: number; // 도착 판정 반경 (km)
   };
+  currentIndex: number;
 }
 
 const driveLogSchema = new Schema<IDriveLog>({
@@ -59,12 +61,14 @@ const driveLogSchema = new Schema<IDriveLog>({
         enum: ['pending', 'approaching', 'arrived', 'departed'],
         default: 'pending',
       },
+      minDistance: { type: Number, default: null },
     },
   ],
   settings: {
     approachRadius: { type: Number, default: 0.5 }, // 기본 500m
     arrivalRadius: { type: Number, default: 0.1 }, // 기본 100m
   },
+  currentIndex: { type: Number, default: 0 },
 });
 
 export const DriveLog = model<IDriveLog>('DriveLog', driveLogSchema);
