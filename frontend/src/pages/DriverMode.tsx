@@ -392,7 +392,7 @@ ${shareUrl}`;
       <div className="driver-view-container">
         <div className="driver-header" style={{ flexDirection: 'row' }}>
           <h1 className="driver-title">🚌 운전자 모드</h1>
-          <Link to="/create" className="btn btn-outline-primary">
+          <Link to="/config/create" className="btn btn-outline-primary">
             경로 등록하러 가기
           </Link>
         </div>

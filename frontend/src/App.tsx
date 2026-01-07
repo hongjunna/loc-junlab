@@ -6,6 +6,7 @@ import {
   Link,
   useLocation,
   useNavigate,
+  Navigate,
 } from 'react-router-dom';
 import { Navbar, Nav, Form, Button, InputGroup } from 'react-bootstrap';
 import CreateRoute from './pages/CreateRoute';
@@ -67,10 +68,10 @@ const AdminHome = () => {
         드라이버 모드를 실행해 보세요.
       </p>
       <div className="d-grid gap-2 mt-4">
-        <Link to="/create" className="btn btn-outline-primary">
+        <Link to="/config/create" className="btn btn-outline-primary">
           노선 등록하러 가기
         </Link>
-        <Link to="/driver" className="btn btn-outline-dark">
+        <Link to="/config/driver" className="btn btn-outline-dark">
           드라이버 모드 시작
         </Link>
       </div>
@@ -85,14 +86,12 @@ const AppContent = () => {
   // 루트('/') 경로이거나 '/passenger' 경로면 승객 모드로 간주
   const isPassengerMode =
     location.pathname === '/' || location.pathname.startsWith('/passenger');
+  const isAdminMode = location.pathname.startsWith('/config');
 
   return (
     <div className="app-wrapper">
       {/* 1. 상단 네비게이션 */}
-      {isPassengerMode ? (
-        // [승객용 상단바] (파란색)
-        <div></div>
-      ) : (
+      {isAdminMode ? (
         // [관리자용 상단바] (검은색)
         <Navbar
           bg="dark"
@@ -103,7 +102,7 @@ const AppContent = () => {
           {/* 관리자 로고 클릭 시 /admin으로 이동 */}
           <Navbar.Brand
             as={Link}
-            to="/driving"
+            to="/config/driving"
             className="fw-bold d-flex align-items-center"
           >
             <span style={{ fontSize: '1.2rem', marginRight: '8px' }}>🚌</span>
@@ -112,20 +111,25 @@ const AppContent = () => {
           <Nav className="ms-auto d-flex flex-row gap-3">
             <Nav.Link
               as={Link}
-              to="/create"
+              to="/config/create"
               className="small px-0 text-white-50"
             >
               등록
             </Nav.Link>
             <Nav.Link
               as={Link}
-              to="/driver"
+              to="/config/driver"
               className="small px-0 text-white-50"
             >
               드라이버
             </Nav.Link>
           </Nav>
         </Navbar>
+      ) : isPassengerMode ? (
+        // [승객용 상단바] (파란색)
+        <div></div>
+      ) : (
+        <Navigate to="/" replace />
       )}
 
       {/* 2. 메인 콘텐츠 영역 */}
@@ -136,9 +140,9 @@ const AppContent = () => {
           <Route path="/passenger" element={<PassengerView />} />
 
           {/* 관리자 페이지 */}
-          <Route path="/driving" element={<AdminHome />} />
-          <Route path="/create" element={<CreateRoute />} />
-          <Route path="/driver" element={<DriverMode />} />
+          <Route path="/config/driving" element={<AdminHome />} />
+          <Route path="/config/create" element={<CreateRoute />} />
+          <Route path="/config/driver" element={<DriverMode />} />
         </Routes>
       </main>
     </div>
