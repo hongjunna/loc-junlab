@@ -1,23 +1,16 @@
 # 1단계: 빌드
-FROM node:18-alpine as builder
+FROM node:22-alpine AS builder
 WORKDIR /app
 COPY package*.json ./
-RUN npm install
+RUN npm ci
 COPY . .
-RUN npx vite build 
+ARG VITE_API_BASE_URL
+ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
+RUN npm run build
 
-# 2단계: 실행 (Nginx 사용)
+# 2단계: 실행 (Nginx)
 FROM nginx:stable-alpine
-# Vite의 기본 빌드 폴더는 dist입니다. 이를 Nginx 경로로 복사
+COPY nginx.conf /etc/nginx/conf.d/default.conf
 COPY --from=builder /app/dist /usr/share/nginx/html
-# SPA 라우팅을 위한 Nginx 설정 (필수)
-RUN echo 'server { \
-    listen 80; \
-    location / { \
-        root /usr/share/nginx/html; \
-        index index.html; \
-        try_files $uri $uri/ /index.html; \
-    } \
-}' > /etc/nginx/conf.d/default.conf
 EXPOSE 80
 CMD ["nginx", "-g", "daemon off;"]
