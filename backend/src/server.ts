@@ -20,9 +20,11 @@ app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ extended: false, limit: '1mb' }));
 
 // 헬스체크 (배포 스크립트에서 사용)
+const DB_STATES = ['disconnected', 'connected', 'connecting', 'disconnecting'];
+
 app.get('/api/health', (_req, res) => {
-  const dbOk = mongoose.connection.readyState === 1;
-  res.status(dbOk ? 200 : 503).json({ ok: dbOk });
+  const state = mongoose.connection.readyState as number;
+  res.status(state === 1 ? 200 : 503).json({ ok: state === 1, db: DB_STATES[state] ?? 'unknown' });
 });
 
 // 공개 API (승객용)
@@ -42,16 +44,51 @@ app.use('/api', (_req, res) => {
 });
 app.use(errorHandler);
 
+// 로그에 접속 대상만 남기고 비밀번호는 가림
+const describeMongo = (uri: string) => {
+  try {
+    const u = new URL(uri);
+    return `${u.protocol}//${u.username ? `${decodeURIComponent(u.username)}:****@` : ''}${u.host}${u.pathname}`;
+  } catch {
+    return '(MONGO_URI 형식 오류)';
+  }
+};
+
+// 흔한 연결 실패 원인을 한국어로 안내
+const mongoHint = (err: unknown) => {
+  const msg = String((err as Error)?.message || err);
+  if (/auth|Authentication failed/i.test(msg))
+    return '아이디/비밀번호가 틀렸거나 authSource 가 맞지 않습니다. 비밀번호를 바꿨다면 .env 의 MONGO_URI 도 바꿨는지, 특수문자를 URL 인코딩(! → %21)했는지 확인하세요.';
+  if (/ENOTFOUND|getaddrinfo/i.test(msg))
+    return 'DB 호스트 이름을 찾을 수 없습니다. 주소 오타나 DNS 를 확인하세요.';
+  if (/ECONNREFUSED/i.test(msg))
+    return 'DB 포트에 연결이 거부되었습니다. 같은 서버의 DB라면 컨테이너 안에서 localhost 는 자기 자신이므로 host.docker.internal 이나 서버 IP를 쓰세요.';
+  if (/timed out|Server selection/i.test(msg))
+    return 'DB 응답이 없습니다. 방화벽/보안그룹에서 이 서버의 접속을 허용했는지, 포트가 맞는지 확인하세요.';
+  if (/Invalid scheme|URI/i.test(msg))
+    return 'MONGO_URI 형식이 잘못되었습니다. (따옴표·공백 포함 여부 확인)';
+  return '';
+};
+
 const start = async () => {
-  await mongoose.connect(config.mongoUri);
+  // DB 연결 전에 먼저 서버를 띄워 헬스체크가 상태(db: connecting)를 알 수 있게 함
+  app.listen(config.port, () => {
+    console.log(`🚗 Server is running on port ${config.port}`);
+  });
+
+  console.log(`⏳ MongoDB 연결 중: ${describeMongo(config.mongoUri)}`);
+  try {
+    await mongoose.connect(config.mongoUri, { serverSelectionTimeoutMS: 10_000 });
+  } catch (err) {
+    console.error(`❌ MongoDB 연결 실패: ${(err as Error).message}`);
+    const hint = mongoHint(err);
+    if (hint) console.error(`💡 ${hint}`);
+    process.exit(1);
+  }
   console.log('✅ MongoDB Connected');
 
   await closeStaleDrives();
   setInterval(() => closeStaleDrives().catch(console.error), 10 * 60 * 1000);
-
-  app.listen(config.port, () => {
-    console.log(`🚗 Server is running on port ${config.port}`);
-  });
 };
 
 start().catch((err) => {

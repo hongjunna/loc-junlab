@@ -73,12 +73,12 @@ Junlab의 여러 서비스(`junlab.xyz`, `sideplay.dev`, `runvia.app`)는 Google
 필요: Node.js 22 이상, MongoDB (Docker로 띄워도 됩니다)
 
 ```bash
-# MongoDB (선택)
+# MongoDB
 docker run -d --name loc-mongo -p 27017:27017 mongo:7
 
 # 백엔드
 cd backend
-cp .env.example .env   # MONGO_URI, ADMIN_PASSWORD, AUTH_SECRET 입력
+cp .env.example .env   # MONGO_URI=mongodb://localhost:27017/loc, ADMIN_PASSWORD, AUTH_SECRET 입력
 npm install
 npm run dev            # http://localhost:5678
 
@@ -100,7 +100,9 @@ npm run dev            # http://localhost:5173 (/api 는 백엔드로 프록시)
 
 | 이름 | 필수 | 설명 |
 | --- | --- | --- |
-| `MONGO_URI` | ✔ | MongoDB 접속 문자열 |
+| `MONGO_INITDB_ROOT_USERNAME` / `MONGO_INITDB_ROOT_PASSWORD` | ✔ | 내장 MongoDB 관리자 계정 (`deploy.sh`가 비밀번호 자동 생성). 처음 DB 볼륨을 만들 때만 적용 |
+| `MONGO_DB` | | DB 이름, 기본 `loc` |
+| `MONGO_URI` | | 외부 MongoDB를 쓸 때만 지정 (지정하면 내장 DB 대신 사용) |
 | `AUTH_SECRET` | ✔ | 로그인 토큰 서명키 (`openssl rand -hex 32`, `deploy.sh`가 자동 생성) |
 | `ADMIN_PASSWORD` | △ | 비밀번호 로그인. 비우면 비활성화 |
 | `GOOGLE_CLIENT_ID` | △ | 구글 로그인 OAuth 클라이언트 ID. 비우면 비활성화 |
@@ -138,6 +140,8 @@ npm run dev            # http://localhost:5173 (/api 는 백엔드로 프록시)
 ./deploy.sh            # git pull → 빌드 → 재시작 → 헬스체크
 ```
 
-- 처음 실행하면 `backend/.env`를 만들고 `AUTH_SECRET`을 자동 생성합니다. `MONGO_URI`와 로그인 방식(`ADMIN_PASSWORD` 또는 `GOOGLE_CLIENT_ID`)을 채운 뒤 다시 실행하세요.
+- MongoDB도 같은 `docker-compose.yml`로 함께 뜹니다(`bus-mongo`, 데이터는 `mongo-data` 볼륨). DB 포트는 외부에 열지 않습니다.
+- 처음 실행하면 `backend/.env`를 만들고 `AUTH_SECRET`과 DB 관리자 비밀번호를 자동 생성합니다. 로그인 방식(`ADMIN_PASSWORD` 또는 `GOOGLE_CLIENT_ID`)을 채운 뒤 다시 실행하세요.
 - `./deploy.sh status | logs | restart | down | --no-pull` 도 사용할 수 있습니다.
+- DB: `./deploy.sh db-backup`(→ `backups/`), `./deploy.sh db-shell`(mongosh). `./deploy.sh down`은 컨테이너만 내리고 데이터 볼륨은 남깁니다.
 - 포트: 프론트 `5678`(nginx, `/api`는 백엔드로 프록시), 백엔드 `5679`. 외부 Nginx에서는 도메인 전체를 `5678`로 넘기는 것을 권장합니다. `/api`만 `5679`로 넘기는 기존 구성도 동작하지만, 이때도 나머지 경로는 `5678`로 넘겨야 공유 링크 미리보기가 동작합니다.

@@ -1,4 +1,22 @@
 services:
+  # MongoDB (데이터는 mongo-data 볼륨에 보관, 외부 포트는 열지 않음)
+  mongo:
+    image: mongo:7
+    container_name: bus-mongo
+    restart: unless-stopped
+    # MONGO_INITDB_ROOT_USERNAME / MONGO_INITDB_ROOT_PASSWORD 를 사용 (처음 볼륨 생성 시에만 적용)
+    env_file: ./backend/.env
+    volumes:
+      - mongo-data:/data/db
+    healthcheck:
+      test: ['CMD', 'mongosh', '--quiet', '--eval', "db.adminCommand('ping').ok"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    networks:
+      - bus-network
+
   # 백엔드 (Express)
   backend:
     build: ./backend
@@ -10,6 +28,9 @@ services:
     ports:
       # 외부 Nginx가 /api 를 이 포트로 프록시하는 기존 구성 호환
       - '5679:5678'
+    depends_on:
+      mongo:
+        condition: service_healthy
     healthcheck:
       test: ['CMD', 'wget', '-qO-', 'http://127.0.0.1:5678/api/health']
       interval: 30s
@@ -34,6 +55,9 @@ services:
       - backend
     networks:
       - bus-network
+
+volumes:
+  mongo-data:
 
 networks:
   bus-network:
