@@ -3,12 +3,23 @@ import mongoose from 'mongoose';
 import { ZodError } from 'zod';
 
 export class HttpError extends Error {
-  constructor(public status: number, message: string) {
+  constructor(
+    public status: number,
+    message: string
+  ) {
     super(message);
   }
 }
 
-export const notFound = (what: string) => new HttpError(404, `${what}을(를) 찾을 수 없습니다.`);
+// 받침 유무에 따라 을/를 선택
+const objectJosa = (word: string) => {
+  const code = word.charCodeAt(word.length - 1) - 0xac00;
+  if (code < 0 || code > 11171) return '을(를)';
+  return code % 28 ? '을' : '를';
+};
+
+export const notFound = (what: string) =>
+  new HttpError(404, `${what}${objectJosa(what)} 찾을 수 없습니다.`);
 
 // 모든 에러를 { error: string } 형태의 JSON으로 통일
 export const errorHandler: ErrorRequestHandler = (err, _req, res, _next) => {

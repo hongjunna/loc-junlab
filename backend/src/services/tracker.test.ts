@@ -56,12 +56,10 @@ test('출발지 = 도착지인 순환 노선에서 시작하자마자 도착지�
 
 test('위치 전송 간격이 길어 정류장을 건너뛰어도 통과 처리 후 다음 정류장 도착', () => {
   const r = drive([cp('A', 0), cp('B', 1), cp('C', 1.4), cp('D', 3)], [0, 0.5, 3]);
-  assert.deepEqual(r.checkpoints.map((c) => c.status), [
-    'departed',
-    'departed',
-    'departed',
-    'arrived',
-  ]);
+  assert.deepEqual(
+    r.checkpoints.map((c) => c.status),
+    ['departed', 'departed', 'departed', 'arrived']
+  );
   assert.ok(r.events.includes('pass:B'));
   assert.ok(r.events.includes('pass:C'));
   assert.equal(r.currentIndex, 3);
@@ -99,7 +97,10 @@ test('접근 이벤트는 방송 설정된 정류장만 announce', () => {
 
 test('수기 도착: 이전 정류장은 출발, 대상은 도착 처리', () => {
   const r = manualArrive([cp('A', 0, { status: 'arrived' }), cp('B', 2), cp('C', 4)], 2);
-  assert.deepEqual(r.checkpoints.map((c) => c.status), ['departed', 'departed', 'arrived']);
+  assert.deepEqual(
+    r.checkpoints.map((c) => c.status),
+    ['departed', 'departed', 'arrived']
+  );
   assert.ok(r.checkpoints[0].departureTime);
   assert.ok(r.checkpoints[1].arrivalTime);
   assert.equal(r.currentIndex, 2);

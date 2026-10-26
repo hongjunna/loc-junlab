@@ -36,10 +36,18 @@ export const routeSchema = z
   .superRefine((route, ctx) => {
     const types = route.points.map((p) => p.type);
     if (types[0] !== '출발지' || types.filter((t) => t === '출발지').length !== 1) {
-      ctx.addIssue({ code: 'custom', path: ['points'], message: '출발지는 첫 번째에 1개만 있어야 합니다.' });
+      ctx.addIssue({
+        code: 'custom',
+        path: ['points'],
+        message: '출발지는 첫 번째에 1개만 있어야 합니다.',
+      });
     }
     if (types[types.length - 1] !== '도착지' || types.filter((t) => t === '도착지').length !== 1) {
-      ctx.addIssue({ code: 'custom', path: ['points'], message: '도착지는 마지막에 1개만 있어야 합니다.' });
+      ctx.addIssue({
+        code: 'custom',
+        path: ['points'],
+        message: '도착지는 마지막에 1개만 있어야 합니다.',
+      });
     }
   });
 

@@ -121,7 +121,10 @@ export const applyLocation = (
     }
 
     // 2. 도착
-    if ((cp.status === 'pending' || cp.status === 'approaching') && dist <= settings.arrivalRadius) {
+    if (
+      (cp.status === 'pending' || cp.status === 'approaching') &&
+      dist <= settings.arrivalRadius
+    ) {
       cp.status = 'arrived';
       cp.arrivalTime = now;
       emit('arrive', i);

@@ -111,7 +111,11 @@ router.post('/drives/:id/location', async (req, res) => {
 
   await DriveLog.updateOne(
     { _id: drive._id },
-    { $push: { track: { $each: [{ lat: latitude, lng: longitude, t: now }], $slice: -MAX_TRACK_POINTS } } }
+    {
+      $push: {
+        track: { $each: [{ lat: latitude, lng: longitude, t: now }], $slice: -MAX_TRACK_POINTS },
+      },
+    }
   );
 
   res.json({
@@ -139,7 +143,12 @@ router.post('/drives/:id/checkpoints/:index/arrive', async (req, res) => {
   drive.currentIndex = result.currentIndex;
   drive.set('undoSnapshot', before);
   await drive.save();
-  res.json({ checkpoints: drive.checkpoints, currentIndex: drive.currentIndex, events: result.events, canUndo: true });
+  res.json({
+    checkpoints: drive.checkpoints,
+    currentIndex: drive.currentIndex,
+    events: result.events,
+    canUndo: true,
+  });
 });
 
 // 직전 수기 처리 되돌리기

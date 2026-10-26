@@ -9,7 +9,9 @@ const router = Router();
 // 노선 목록 조회 (진행 중 운행 수 포함)
 router.get('/routes', async (_req, res) => {
   const [routes, active] = await Promise.all([
-    Route.find({ is_deleted: { $ne: true } }).sort({ updatedAt: -1 }).lean(),
+    Route.find({ is_deleted: { $ne: true } })
+      .sort({ updatedAt: -1 })
+      .lean(),
     DriveLog.aggregate<{ _id: string; count: number }>([
       { $match: { status: 'running' } },
       { $group: { _id: '$routeId', count: { $sum: 1 } } },
