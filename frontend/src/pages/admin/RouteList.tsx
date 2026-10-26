@@ -63,7 +63,7 @@ const RouteList = () => {
       {routes && routes.length > 0 && (
         <div className="text-center mt-4">
           <Link to="/config/driver" className="btn btn-dark">
-            🚌 운전 시작하러 가기
+            🚗 운전 시작하러 가기
           </Link>
         </div>
       )}

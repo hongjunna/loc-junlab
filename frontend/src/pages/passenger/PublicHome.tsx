@@ -23,9 +23,19 @@ const PublicHome = () => {
   return (
     <div className="center-page">
       <div className="text-center mb-4">
-        <div className="display-3 mb-2">🚌</div>
+        <img
+          src="/icon-192.png"
+          alt=""
+          width={88}
+          height={88}
+          className="mb-3 rounded-4 shadow-sm"
+        />
         <h2 className="fw-bold">실시간 위치 조회</h2>
-        <p className="text-muted mb-0">공유받은 6자리 조회 코드를 입력해 주세요.</p>
+        <p className="text-muted mb-0">
+          차량이 지금 어디쯤인지, 내 위치엔 언제 오는지 확인하세요.
+          <br />
+          공유받은 6자리 조회 코드를 입력해 주세요.
+        </p>
       </div>
       <Form onSubmit={handleSubmit} className="w-100" style={{ maxWidth: 340 }}>
         <Form.Control

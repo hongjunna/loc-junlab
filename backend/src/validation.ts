@@ -51,8 +51,19 @@ export const routeSchema = z
     }
   });
 
+const objectId = z.string().regex(/^[0-9a-f]{24}$/i, '잘못된 ID입니다.');
+
 export const startDriveSchema = z.object({
-  routeId: z.string().min(1),
+  routeId: objectId,
+  trackerId: objectId.nullish(),
+});
+
+export const trackerLinkSchema = z.object({
+  trackerId: objectId.nullable(),
+});
+
+export const trackerSchema = z.object({
+  name: z.string().trim().min(1, '기기 이름이 필요합니다.').max(40),
 });
 
 export const locationSchema = z.object({

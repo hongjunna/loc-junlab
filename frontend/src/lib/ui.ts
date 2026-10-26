@@ -29,3 +29,13 @@ export const shareUrlOf = (drive: Pick<DriveLog, '_id' | 'shareCode'>) =>
   drive.shareCode
     ? `${window.location.origin}/p/${drive.shareCode}`
     : `${window.location.origin}/passenger?id=${drive._id}`;
+
+// 위치 앱(Traccar)에서 이 시간 안에 수신되면 "연결됨"
+export const TRACKER_ONLINE_MS = 3 * 60 * 1000;
+
+export const TRACCAR_APP = {
+  android: 'https://play.google.com/store/apps/details?id=org.traccar.client',
+  ios: 'https://apps.apple.com/app/traccar-client/id843156974',
+};
+
+export const traccarServerUrl = () => `${window.location.origin}/api/traccar`;

@@ -17,6 +17,9 @@ const RouteList = lazy(() => import('./pages/admin/RouteList'));
 const RouteNew = lazy(() => import('./pages/admin/RouteNew'));
 const DriverHome = lazy(() => import('./pages/driver/DriverHome'));
 const DriverRun = lazy(() => import('./pages/driver/DriverRun'));
+const Trackers = lazy(() => import('./pages/admin/Trackers'));
+const TrackerSetup = lazy(() => import('./pages/admin/TrackerSetup'));
+const Members = lazy(() => import('./pages/admin/Members'));
 
 const NotFound = () => (
   <div className="center-page text-center">
@@ -64,6 +67,9 @@ function App() {
               <Route path="drives" element={<DriveHistory />} />
               <Route path="drives/:id" element={<DriveDetail />} />
               <Route path="driver" element={<DriverHome />} />
+              <Route path="trackers" element={<Trackers />} />
+              <Route path="trackers/:id" element={<TrackerSetup />} />
+              <Route path="members" element={<Members />} />
               {/* 예전 주소 호환 */}
               <Route path="driving" element={<Navigate to="/config" replace />} />
               <Route path="create" element={<Navigate to="/config/routes/new" replace />} />

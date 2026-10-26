@@ -28,14 +28,35 @@ const storage = {
   },
 };
 
+export interface AuthUser {
+  method: 'password' | 'google';
+  email?: string;
+  name?: string;
+  picture?: string;
+  exp: number;
+}
+
+// 토큰 앞부분(base64url JSON)에서 사용자 정보 읽기. 검증은 서버가 함
+const decode = (token: string | null): AuthUser | null => {
+  if (!token) return null;
+  try {
+    const b64 = token.split('.')[0].replace(/-/g, '+').replace(/_/g, '/');
+    const json = decodeURIComponent(
+      Array.from(atob(b64), (c) => '%' + c.charCodeAt(0).toString(16).padStart(2, '0')).join('')
+    );
+    return JSON.parse(json) as AuthUser;
+  } catch {
+    return null;
+  }
+};
+
 export const auth = {
   getToken: storage.get,
   setToken: storage.set,
+  user: () => decode(storage.get()),
   isLoggedIn: () => {
-    const token = storage.get();
-    if (!token) return false;
-    const exp = Number(token.split('.')[0]);
-    return Number.isFinite(exp) && exp > Date.now();
+    const user = decode(storage.get());
+    return !!user && user.exp > Date.now();
   },
 };
 

@@ -23,6 +23,8 @@ export interface ITrackPoint {
   t: Date;
 }
 
+export type LocationSource = 'browser' | 'traccar';
+
 export interface IDriveLog {
   routeId: Types.ObjectId;
   routeName: string;
@@ -38,7 +40,10 @@ export interface IDriveLog {
     accuracy?: number;
     heading?: number;
     speed?: number; // m/s
-    updatedAt?: Date;
+    battery?: number; // 0~100 (Traccar)
+    recordedAt?: Date; // 기기에서 측정한 시각
+    updatedAt?: Date; // 서버 수신 시각
+    source?: LocationSource;
   };
   track: ITrackPoint[];
   checkpoints: ICheckpoint[];
@@ -48,6 +53,12 @@ export interface IDriveLog {
   };
   // 수기 처리 직전 상태 (되돌리기용)
   undoSnapshot?: { checkpoints: ICheckpoint[]; currentIndex: number } | null;
+  // 위치를 보내는 Traccar 기기 (없으면 운전자 폰 브라우저)
+  trackerId?: Types.ObjectId | null;
+  startedBy?: { method: string; email?: string; name?: string };
+  // 마지막 판정 안내 (Traccar 운행 시 운전자 화면에 표시)
+  lastMessage?: string;
+  lastEventAt?: Date;
   updatedAt: Date;
 }
 
@@ -85,7 +96,10 @@ const driveLogSchema = new Schema<IDriveLog>(
       accuracy: Number,
       heading: Number,
       speed: Number,
+      battery: Number,
+      recordedAt: Date,
       updatedAt: Date,
+      source: { type: String, enum: ['browser', 'traccar'] },
     },
     track: {
       type: [{ lat: Number, lng: Number, t: Date, _id: false }],
@@ -97,6 +111,10 @@ const driveLogSchema = new Schema<IDriveLog>(
       approachRadius: Number,
       arrivalRadius: Number,
     },
+    trackerId: { type: Schema.Types.ObjectId, ref: 'Tracker', default: null },
+    startedBy: { method: String, email: String, name: String, _id: false },
+    lastMessage: String,
+    lastEventAt: Date,
     undoSnapshot: {
       type: Schema.Types.Mixed,
       default: null,
@@ -107,5 +125,6 @@ const driveLogSchema = new Schema<IDriveLog>(
 );
 
 driveLogSchema.index({ status: 1, updatedAt: -1 });
+driveLogSchema.index({ trackerId: 1, status: 1 });
 
 export const DriveLog = model<IDriveLog>('DriveLog', driveLogSchema);

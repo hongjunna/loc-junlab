@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { Badge, Button, Card, Spinner } from 'react-bootstrap';
 import { Link, useNavigate } from 'react-router-dom';
-import { errorMessage, getActiveDrives, getRoutes, startDrive } from '../../api';
+import { errorMessage, getActiveDrives, getRoutes, getTrackers, startDrive } from '../../api';
+import LocationSourcePicker from '../../components/LocationSourcePicker';
 import { useFeedback } from '../../components/feedback/context';
 import { Empty, LoadError, Loading } from '../../components/LoadState';
 import { useAsync } from '../../hooks/useAsync';
@@ -9,11 +10,34 @@ import { formatTime } from '../../lib/format';
 import { ACTIVE_DRIVE_KEY } from '../../lib/ui';
 import type { Route } from '../../types';
 
+const SOURCE_KEY = 'driveSource';
+
 const DriverHome = () => {
   const navigate = useNavigate();
   const { toast, confirm } = useFeedback();
   const routes = useAsync(getRoutes, []);
   const active = useAsync(getActiveDrives, []);
+  const trackers = useAsync(getTrackers, []);
+  // 마지막으로 선택한 위치 전송 방식 기억
+  const [source, setSource] = useState<string | null>(() => {
+    try {
+      return localStorage.getItem(SOURCE_KEY) || null;
+    } catch {
+      return null;
+    }
+  });
+  const chooseSource = (id: string | null) => {
+    setSource(id);
+    try {
+      if (id) localStorage.setItem(SOURCE_KEY, id);
+      else localStorage.removeItem(SOURCE_KEY);
+    } catch {
+      // 무시
+    }
+  };
+  // 삭제되었거나 다른 운행에서 사용 중인 기기는 선택 해제
+  const selectable = trackers.data?.find((t) => t._id === source && !t.activeDrive);
+  const effectiveSource = trackers.data ? (selectable ? source : null) : source;
   const [starting, setStarting] = useState<string | null>(null);
   const [myDriveId] = useState(() => {
     try {
@@ -35,7 +59,7 @@ const DriverHome = () => {
     }
     setStarting(route._id);
     try {
-      const drive = await startDrive(route._id);
+      const drive = await startDrive(route._id, effectiveSource);
       try {
         localStorage.setItem(ACTIVE_DRIVE_KEY, drive._id);
       } catch {
@@ -90,6 +114,21 @@ const DriverHome = () => {
             </Card.Body>
           </Card>
         ))}
+      </div>
+
+      <div className="section-label">📡 위치 전송 방식</div>
+      <div className="mb-4">
+        {trackers.data ? (
+          <LocationSourcePicker
+            trackers={trackers.data}
+            value={effectiveSource}
+            onChange={chooseSource}
+          />
+        ) : trackers.error ? (
+          <LoadError message={trackers.error} onRetry={trackers.reload} />
+        ) : (
+          <Loading />
+        )}
       </div>
 
       <div className="section-label">🆕 새 운행 시작</div>

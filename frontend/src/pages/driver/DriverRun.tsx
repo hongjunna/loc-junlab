@@ -1,20 +1,25 @@
 import { useCallback, useState } from 'react';
-import { Badge, Button, Collapse, Spinner } from 'react-bootstrap';
+import { Badge, Button, Collapse, Modal, Spinner } from 'react-bootstrap';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import {
   arriveCheckpoint,
   endDrive,
   errorMessage,
   getDrive,
+  getTrackers,
   sendLocation,
+  setDriveTracker,
   undoCheckpoint,
 } from '../../api';
+import LocationSourcePicker from '../../components/LocationSourcePicker';
 import { useFeedback } from '../../components/feedback/context';
 import { LoadError, Loading } from '../../components/LoadState';
 import ShareModal from '../../components/ShareModal';
 import { useAsync } from '../../hooks/useAsync';
 import { useGeoTracker, type GeoFix } from '../../hooks/useGeoTracker';
 import { useNow } from '../../hooks/useNow';
+import { usePolling } from '../../hooks/usePolling';
+import { useDocumentMeta } from '../../hooks/useDocumentMeta';
 import { useSpeech } from '../../hooks/useSpeech';
 import { useWakeLock } from '../../hooks/useWakeLock';
 import {
@@ -27,7 +32,7 @@ import {
   toLatLng,
 } from '../../lib/format';
 import { ACTIVE_DRIVE_KEY, STATUS_BADGE, TYPE_BADGE } from '../../lib/ui';
-import type { Checkpoint, CheckpointUpdate, DriveLog, TrackerEvent } from '../../types';
+import type { Checkpoint, CheckpointUpdate, DriveLog, Tracker, TrackerEvent } from '../../types';
 import './DriverRun.css';
 
 // 이 시간 이상 전송이 안 되면 경고
@@ -93,12 +98,43 @@ const StatusBar = ({
   );
 };
 
+// Traccar 위치 앱으로 전송 중일 때 상태 표시줄
+const TrackerBar = ({ drive }: { drive: DriveLog }) => {
+  const now = useNow(1000);
+  const tracker = drive.trackerId!;
+  const loc = drive.currentLocation?.source === 'traccar' ? drive.currentLocation : null;
+  const at = loc?.updatedAt || tracker.lastSeenAt;
+  const stale = !at || now - new Date(at).getTime() > 3 * 60 * 1000;
+  const battery = loc?.battery ?? tracker.lastLocation?.battery;
+  return (
+    <div className={`run-status run-status-${!at ? 'warning' : stale ? 'danger' : 'ok'}`}>
+      <div className="d-flex justify-content-between align-items-center gap-2">
+        <span className="text-truncate">
+          📱 {tracker.name} · {at ? `수신 ${formatAgo(at, now)}` : '수신 대기 중...'}
+        </span>
+        <span className="text-nowrap">
+          {loc?.accuracy !== undefined && `±${Math.round(loc.accuracy)}m`}
+          {battery !== undefined && ` · 🔋${Math.round(battery)}%`}
+        </span>
+      </div>
+      <div className="small mt-1">
+        {!at
+          ? 'Traccar Client 앱에서 위치 전송이 켜져 있는지 확인해주세요.'
+          : stale
+            ? '위치 앱에서 신호가 오지 않습니다. 앱의 전송 상태와 권한을 확인해주세요.'
+            : '화면을 꺼도 위치가 전송됩니다.'}
+      </div>
+    </div>
+  );
+};
+
 const DriverRun = () => {
   const { id = '' } = useParams();
   const navigate = useNavigate();
   const { toast, confirm } = useFeedback();
   const speak = useSpeech();
   const { data: drive, error, reload, setData } = useAsync(() => getDrive(id), [id]);
+  useDocumentMeta(drive ? `운행 중 · ${drive.routeName}` : '운행관리', { noindex: true });
   const [engaged, setEngaged] = useState(false);
   const [lastMessage, setLastMessage] = useState<string | null>(null);
   const [showShare, setShowShare] = useState(false);
@@ -107,8 +143,16 @@ const DriverRun = () => {
   const [logs, setLogs] = useState<string[]>([]);
   const [showLogs, setShowLogs] = useState(false);
 
+  const [sourceModal, setSourceModal] = useState<{
+    trackers: Tracker[] | null;
+    value: string | null;
+  } | null>(null);
+  const [lastEventSeen, setLastEventSeen] = useState<string | undefined>(undefined);
+
   const running = drive?.status === 'running';
-  const wakeLock = useWakeLock(engaged && running);
+  // Traccar 위치 앱으로 전송하는 운행이면 이 폰의 브라우저 위치 추적은 쓰지 않음
+  const viaTracker = !!drive?.trackerId;
+  const wakeLock = useWakeLock(engaged && running && !viaTracker);
 
   const addLog = useCallback((msg: string) => {
     const t = new Date().toLocaleTimeString('ko-KR', { hour12: false });
@@ -150,8 +194,57 @@ const DriverRun = () => {
     [addLog, speak, toast]
   );
 
+  // Traccar 모드: 서버에서 판정한 결과를 주기적으로 받아온다
+  usePolling(
+    async () => {
+      const next = await getDrive(id);
+      setData(next);
+      if (next.lastEventAt && next.lastEventAt !== lastEventSeen) {
+        if (lastEventSeen !== undefined && next.lastMessage) {
+          setLastMessage(next.lastMessage);
+          addLog(next.lastMessage);
+          if (engaged) speak(next.lastMessage, true);
+        }
+        setLastEventSeen(next.lastEventAt);
+      }
+    },
+    5000,
+    running && viaTracker
+  );
+
+  const openSourceModal = async () => {
+    setSourceModal({ trackers: null, value: drive?.trackerId?._id || null });
+    try {
+      const trackers = await getTrackers();
+      setSourceModal((m) => (m ? { ...m, trackers } : m));
+    } catch (err) {
+      toast(errorMessage(err), { variant: 'danger' });
+      setSourceModal(null);
+    }
+  };
+
+  const saveSource = async () => {
+    if (!sourceModal || !drive) return;
+    setBusy(true);
+    try {
+      const res = await setDriveTracker(id, sourceModal.value);
+      setData({ ...drive, trackerId: res.trackerId });
+      setSourceModal(null);
+      toast(
+        res.trackerId
+          ? `'${res.trackerId.name}' 위치 앱으로 전송합니다. 화면을 꺼도 됩니다.`
+          : '이 폰 브라우저로 전송합니다. 화면을 켜둔 채로 유지해주세요.',
+        { variant: 'info' }
+      );
+    } catch (err) {
+      toast(errorMessage(err), { variant: 'danger' });
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const tracker = useGeoTracker({
-    enabled: engaged && running,
+    enabled: engaged && running && !viaTracker,
     onSend: async (fix) => {
       try {
         const res = await sendLocation(id, {
@@ -279,9 +372,13 @@ const DriverRun = () => {
   const stoppedAt = current?.status === 'arrived' ? current : null;
   const nextIndex = stoppedAt ? currentIndex + 1 : currentIndex;
   const next = checkpoints[nextIndex];
-  const myPos = tracker.lastFix
-    ? ([tracker.lastFix.latitude, tracker.lastFix.longitude] as [number, number])
-    : null;
+  const myPos: [number, number] | null =
+    !viaTracker && tracker.lastFix
+      ? [tracker.lastFix.latitude, tracker.lastFix.longitude]
+      : drive.currentLocation?.coordinates
+        ? toLatLng(drive.currentLocation.coordinates)
+        : null;
+  const message = lastMessage || drive.lastMessage;
   const distToNext = next && myPos ? distance(myPos, toLatLng(next.coordinates)) : null;
   const nextSched = next ? schedule[nextIndex] : null;
   const finished = !running;
@@ -299,6 +396,17 @@ const DriverRun = () => {
             {drive.shareCode && ` · 코드 ${drive.shareCode}`}
           </small>
         </div>
+        {running && (
+          <Button
+            variant="light"
+            className="run-icon-btn"
+            onClick={openSourceModal}
+            aria-label="위치 전송 방식"
+            title="위치 전송 방식"
+          >
+            📡
+          </Button>
+        )}
         <Button
           variant="light"
           className="run-icon-btn"
@@ -309,7 +417,8 @@ const DriverRun = () => {
         </Button>
       </header>
 
-      {running && engaged && (
+      {running && viaTracker && <TrackerBar drive={drive} />}
+      {running && engaged && !viaTracker && (
         <StatusBar
           lastSentAt={tracker.lastSentAt}
           lastFix={tracker.lastFix}
@@ -394,7 +503,7 @@ const DriverRun = () => {
               </div>
             )}
 
-            {lastMessage && <div className="run-message">🔔 {lastMessage}</div>}
+            {message && <div className="run-message">🔔 {message}</div>}
             {drive.canUndo && (
               <Button
                 variant="outline-secondary"
@@ -494,13 +603,26 @@ const DriverRun = () => {
       {running && !engaged && (
         <div className="engage-overlay">
           <div className="engage-card">
-            <div className="fs-1">🚌</div>
+            <div className="fs-1">🚗</div>
             <div className="fw-bold fs-5 mt-2">{drive.routeName}</div>
-            <ul className="text-start small text-muted mt-3 mb-4 ps-3">
-              <li>운행 중에는 이 화면을 켜둔 채로 유지해주세요.</li>
-              <li>다른 앱으로 전환하거나 화면이 꺼지면 위치 전송이 멈춥니다.</li>
-              <li>위치 권한 요청이 뜨면 &lsquo;허용&rsquo;을 눌러주세요.</li>
-            </ul>
+            {viaTracker ? (
+              <ul className="text-start small text-muted mt-3 mb-4 ps-3">
+                <li>
+                  위치는 <b>📱 {drive.trackerId!.name}</b>의 Traccar Client 앱이 보냅니다.
+                </li>
+                <li>앱에서 위치 전송이 켜져 있는지 확인하세요. 화면을 꺼도 됩니다.</li>
+                <li>이 화면을 켜두면 정류장 안내 음성을 들을 수 있습니다.</li>
+              </ul>
+            ) : (
+              <ul className="text-start small text-muted mt-3 mb-4 ps-3">
+                <li>운행 중에는 이 화면을 켜둔 채로 유지해주세요.</li>
+                <li>다른 앱으로 전환하거나 화면이 꺼지면 위치 전송이 멈춥니다.</li>
+                <li>위치 권한 요청이 뜨면 &lsquo;허용&rsquo;을 눌러주세요.</li>
+                <li>
+                  화면을 끄고 운행하려면 상단 📡 버튼에서 <b>위치 앱</b>으로 바꾸세요.
+                </li>
+              </ul>
+            )}
             <Button size="lg" className="w-100 fw-bold py-3" onClick={engage}>
               {checkpoints.some((c) => c.status !== 'pending') ? '운행 재개' : '운행 시작'}
             </Button>
@@ -512,6 +634,32 @@ const DriverRun = () => {
       )}
 
       <ShareModal drive={drive} show={showShare} onHide={() => setShowShare(false)} />
+
+      <Modal show={!!sourceModal} onHide={() => setSourceModal(null)} centered scrollable>
+        <Modal.Header closeButton>
+          <Modal.Title className="fs-5">위치 전송 방식</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          {sourceModal?.trackers ? (
+            <LocationSourcePicker
+              trackers={sourceModal.trackers}
+              value={sourceModal.value}
+              currentDriveId={drive._id}
+              onChange={(value) => setSourceModal((m) => (m ? { ...m, value } : m))}
+            />
+          ) : (
+            <Loading />
+          )}
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="outline-secondary" onClick={() => setSourceModal(null)}>
+            취소
+          </Button>
+          <Button onClick={saveSource} disabled={busy || !sourceModal?.trackers}>
+            변경
+          </Button>
+        </Modal.Footer>
+      </Modal>
     </div>
   );
 };

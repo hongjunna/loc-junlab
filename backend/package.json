@@ -19,6 +19,7 @@
     "dotenv": "^17.2.3",
     "express": "^5.2.1",
     "geolib": "^3.3.4",
+    "google-auth-library": "^11.3.1",
     "mongoose": "^9.1.1",
     "zod": "^3.25.76"
   },
