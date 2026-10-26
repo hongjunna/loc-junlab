@@ -10,7 +10,8 @@ import publicRoutes from './routes/public';
 import { closeStaleDrives } from './services/drive';
 
 const app = express();
-app.set('trust proxy', true); // Nginx 뒤에서 실제 클라이언트 IP 사용
+// Nginx(로컬/도커 사설망) 뒤에서 실제 클라이언트 IP 사용. 외부에서 보낸 X-Forwarded-For 는 신뢰하지 않음
+app.set('trust proxy', 'loopback, linklocal, uniquelocal');
 app.use(cors({ origin: config.corsOrigins.length > 0 ? config.corsOrigins : false }));
 app.use(express.json({ limit: '1mb' }));
 
