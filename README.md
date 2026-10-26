@@ -52,17 +52,21 @@ deploy.sh  서버 배포 스크립트
 ## 구글 로그인 설정
 
 비밀번호 로그인만 써도 되고, 구글 로그인을 함께(또는 대신) 쓸 수 있습니다.
+Junlab의 여러 서비스(`junlab.xyz`, `sideplay.dev`, `runvia.app`)는 Google Cloud 프로젝트 **하나**를 같이 쓰고, 서비스마다 OAuth 클라이언트를 따로 만듭니다.
 
-1. [Google Cloud Console](https://console.cloud.google.com/)에서 프로젝트를 선택(또는 생성)합니다.
-2. **Google Auth Platform**(이전 이름: OAuth 동의 화면)으로 이동해 처음이라면 앱 정보를 등록합니다.
-   - **Branding**: 앱 이름, 지원 이메일, 앱 도메인에 서비스 주소, 승인된 도메인에 `junlab.xyz`
-   - **Audience**: 사용자 유형 **External**, 게시 상태를 **In production**으로 게시 (Testing 상태면 테스트 사용자로 등록한 100명만 로그인 가능)
-   - **Data Access**: 별도 범위를 추가할 필요 없음 (로그인은 기본 범위 `openid`, `email`, `profile`만 사용)
-3. **Clients → Create Client** → 애플리케이션 유형 **웹 애플리케이션**
-   - 승인된 JavaScript 원본: `https://loc.junlab.xyz` (로컬 개발 시 `http://localhost:5173`도 추가)
+1. [Google Cloud Console](https://console.cloud.google.com/)에서 공용 프로젝트(예: `Junlab-web-service`)를 선택합니다.
+2. **Google Auth Platform**(이전 이름: OAuth 동의 화면) — 프로젝트 공통, 한 번만 설정
+   - **Branding**: 앱 이름은 모든 서비스의 구글 로그인 창에 똑같이 보이므로 서비스 전체를 아우르는 이름(예: `Junlab`)으로 정합니다. 승인된 도메인에 `junlab.xyz`, `sideplay.dev`, `runvia.app`을 모두 추가합니다. (하위 도메인 `location.sideplay.dev` 등은 자동 포함)
+   - **Audience**: 사용자 유형 **External**, 게시 상태 **In production** (Testing 상태면 테스트 사용자로 등록한 100명만 로그인 가능)
+   - **Data Access**: 범위 추가 불필요 (로그인은 기본 범위 `openid`, `email`, `profile`만 사용)
+3. **Clients → Create Client** — 서비스마다 하나씩
+   - 애플리케이션 유형 **웹 애플리케이션**, 이름 예: `location (sideplay.dev)`
+   - 승인된 JavaScript 원본: `https://location.sideplay.dev` (로컬 개발 시 `http://localhost:5173`도 추가)
    - 승인된 리디렉션 URI: 비워둠 (팝업 방식이라 필요 없음)
 4. 만들어진 **클라이언트 ID**를 `backend/.env`의 `GOOGLE_CLIENT_ID`에, 내 구글 계정을 `ADMIN_EMAILS`에 넣고 `./deploy.sh`를 실행합니다. 클라이언트 보안 비밀번호(secret)는 사용하지 않습니다.
 5. 다른 사람은 관리 화면 **사용자**에서 구글 이메일을 추가하면 로그인할 수 있습니다.
+
+서버는 자기 서비스의 클라이언트 ID로 발급된 구글 토큰만 받으므로, 같은 프로젝트의 다른 서비스 로그인으로 이 서비스에 들어올 수 없습니다.
 
 ## 로컬 개발
 
@@ -109,7 +113,7 @@ npm run dev            # http://localhost:5173 (/api 는 백엔드로 프록시)
 
 △: `ADMIN_PASSWORD`와 `GOOGLE_CLIENT_ID` 중 하나 이상은 반드시 설정해야 합니다.
 
-프론트엔드 빌드 시 `SITE_URL`(기본 `https://loc.junlab.xyz`)로 OG 이미지 주소, canonical, `robots.txt`, `sitemap.xml`을 만듭니다. 다른 도메인에 배포하면 서버에서 `SITE_URL=https://example.com ./deploy.sh`처럼 지정하세요.
+프론트엔드 빌드 시 `SITE_URL`(기본 `https://location.sideplay.dev`)로 OG 이미지 주소, canonical, `robots.txt`, `sitemap.xml`을 만듭니다. 다른 도메인에 배포하면 서버에서 `SITE_URL=https://example.com ./deploy.sh`처럼 지정하세요.
 
 ## 아이콘·공유 미리보기·SEO
 
@@ -117,6 +121,14 @@ npm run dev            # http://localhost:5173 (/api 는 백엔드로 프록시)
 - 공유 미리보기: `og-image.png`(1200×630)와 OG/Twitter 메타 태그. 카카오톡 등 미리보기 봇이 공유 링크(`/p/:code`)를 요청하면 nginx가 백엔드 `/api/og/p/:code`로 넘겨 노선 이름이 들어간 미리보기를 보여줍니다.
 - 검색: 홈만 색인되도록 sitemap에 `/`만 넣고, 공유 링크·관리 화면은 `noindex` 처리합니다.
 - 카카오톡은 미리보기를 캐시하므로 이미지를 바꾼 뒤에는 [카카오 공유 디버거](https://developers.kakao.com/tool/debugger/sharing)에서 캐시를 초기화하세요.
+
+## 도메인
+
+서비스 주소: `https://location.sideplay.dev`
+
+이전 도메인(`loc.junlab.xyz`)에서 옮길 때:
+- 외부 Nginx에서 이전 도메인 요청을 새 도메인으로 `301` 리디렉트하면 예전에 공유한 링크도 열립니다.
+- 운전자 폰의 Traccar Client **Server URL**을 `https://location.sideplay.dev/api/traccar`로 바꿔야 합니다. (앱의 POST 요청은 리디렉트를 따라가지 않을 수 있으므로, 앱 설정을 모두 바꾸기 전까지는 이전 도메인의 `/api/traccar`를 리디렉트하지 말고 프록시로 유지하세요.)
 
 ## 배포
 

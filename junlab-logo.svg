@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Junlab">
+  <defs>
+    <linearGradient id="jl-bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#4f46e5"/>
+      <stop offset="1" stop-color="#7c3aed"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="116" fill="url(#jl-bg)"/>
+  <!-- J -->
+  <path d="M318 128V306a90 90 0 0 1-180 0" fill="none" stroke="#fff" stroke-width="60" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- lab bubbles -->
+  <circle cx="196" cy="168" r="26" fill="#a5b4fc"/>
+  <circle cx="150" cy="112" r="15" fill="#c7d2fe"/>
+  <circle cx="226" cy="96" r="10" fill="#e0e7ff"/>
+  <circle cx="388" cy="388" r="20" fill="#fbbf24"/>
+</svg>

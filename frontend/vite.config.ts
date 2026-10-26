@@ -38,7 +38,7 @@ const seo = (siteUrl: string): Plugin => ({
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
-  const siteUrl = (env.SITE_URL || 'https://loc.junlab.xyz').replace(/\/$/, '');
+  const siteUrl = (env.SITE_URL || 'https://location.sideplay.dev').replace(/\/$/, '');
   return {
     plugins: [react(), seo(siteUrl)],
     server: {

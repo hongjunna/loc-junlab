@@ -5,7 +5,7 @@ COPY package*.json ./
 RUN npm ci
 COPY . .
 ARG VITE_API_BASE_URL
-ARG SITE_URL=https://loc.junlab.xyz
+ARG SITE_URL=https://location.sideplay.dev
 ENV VITE_API_BASE_URL=$VITE_API_BASE_URL SITE_URL=$SITE_URL
 RUN npm run build
 
