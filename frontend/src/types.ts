@@ -48,7 +48,43 @@ export interface CurrentLocation {
   accuracy?: number;
   heading?: number;
   speed?: number;
+  battery?: number;
+  recordedAt?: string;
   updatedAt?: string;
+  source?: 'browser' | 'traccar';
+}
+
+export interface Tracker {
+  _id: string;
+  name: string;
+  deviceId: string;
+  createdBy?: string;
+  createdAt: string;
+  lastSeenAt?: string;
+  lastLocation?: {
+    lat: number;
+    lng: number;
+    accuracy?: number;
+    battery?: number;
+    recordedAt?: string;
+  };
+  activeDrive?: { _id: string; routeName: string } | null;
+}
+
+export type TrackerSummary = Pick<Tracker, '_id' | 'name' | 'lastSeenAt' | 'lastLocation'>;
+
+export interface Member {
+  _id: string;
+  email: string;
+  name?: string;
+  addedBy?: string;
+  lastLoginAt?: string;
+  createdAt: string;
+}
+
+export interface AuthConfig {
+  password: boolean;
+  googleClientId: string | null;
 }
 
 export interface DriveLog {
@@ -66,6 +102,10 @@ export interface DriveLog {
   settings: RouteSettings;
   track?: { lat: number; lng: number; t: string }[];
   canUndo?: boolean;
+  trackerId?: TrackerSummary | null;
+  startedBy?: { method: string; email?: string; name?: string };
+  lastMessage?: string;
+  lastEventAt?: string;
 }
 
 export interface TrackerEvent {

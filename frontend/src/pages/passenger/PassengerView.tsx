@@ -7,6 +7,7 @@ import DriveMap from '../../components/map/DriveMap';
 import { useAsync } from '../../hooks/useAsync';
 import { useNow } from '../../hooks/useNow';
 import { usePolling } from '../../hooks/usePolling';
+import { useDocumentMeta } from '../../hooks/useDocumentMeta';
 import { formatAgo, formatTime, hhmm, scheduleOf, toLatLng } from '../../lib/format';
 import type { LatLng, PublicDrive } from '../../types';
 import './PassengerView.css';
@@ -105,6 +106,8 @@ const PassengerView = () => {
   const storageKey = `myStop:${code}`;
 
   const { data: drive, error, reload, setData } = useAsync(() => getPublicDrive(code), [code]);
+  // 개인 운행 정보이므로 검색 노출 제외
+  useDocumentMeta(drive ? `${drive.routeName} · 실시간 위치` : undefined, { noindex: true });
   const [connectionLost, setConnectionLost] = useState(false);
   const [autoFollow, setAutoFollow] = useState(true);
   const [expanded, setExpanded] = useState(false);
@@ -246,7 +249,7 @@ const PassengerView = () => {
               className="map-fab map-fab-wide"
               onClick={() => setAutoFollow(true)}
             >
-              🚌 차량 따라가기
+              🚗 차량 따라가기
             </button>
           )}
         </div>

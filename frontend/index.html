@@ -2,13 +2,51 @@
 <html lang="ko">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <meta name="theme-color" content="#4f46e5" />
-    <meta name="description" content="실시간 차량 위치와 도착 정보를 확인하세요." />
     <title>실시간 위치 조회</title>
+    <meta name="description" content="차량이 지금 어디쯤인지, 내 위치엔 언제 오는지 한눈에. 공유받은 링크나 6자리 코드로 실시간 위치와 도착 예정 시각을 확인하세요." />
+    <meta name="theme-color" content="#4f46e5" />
+    <link rel="canonical" href="%SITE_URL%/" />
+
+    <!-- 아이콘 -->
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/site.webmanifest" />
+    <meta name="apple-mobile-web-app-title" content="위치조회" />
+
+    <!-- 공유 미리보기 (카카오톡, 페이스북, 슬랙 등) -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="실시간 위치 조회" />
+    <meta property="og:locale" content="ko_KR" />
+    <meta property="og:url" content="%SITE_URL%/" />
+    <meta property="og:title" content="실시간 위치 조회" />
+    <meta property="og:description" content="차량이 지금 어디쯤인지, 내 위치엔 언제 오는지 한눈에 확인하세요." />
+    <meta property="og:image" content="%SITE_URL%/og-image.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="실시간 위치 조회" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="실시간 위치 조회" />
+    <meta name="twitter:description" content="차량이 지금 어디쯤인지, 내 위치엔 언제 오는지 한눈에 확인하세요." />
+    <meta name="twitter:image" content="%SITE_URL%/og-image.png" />
+
+    <!-- 검색엔진 구조화 데이터 -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebApplication",
+        "name": "실시간 위치 조회",
+        "url": "%SITE_URL%/",
+        "applicationCategory": "TravelApplication",
+        "operatingSystem": "Web",
+        "inLanguage": "ko",
+        "offers": { "@type": "Offer", "price": "0", "priceCurrency": "KRW" }
+      }
+    </script>
   </head>
   <body>
+    <noscript>이 서비스를 이용하려면 JavaScript를 켜주세요.</noscript>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

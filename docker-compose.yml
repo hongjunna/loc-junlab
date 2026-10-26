@@ -21,7 +21,11 @@ services:
 
   # 프론트엔드 (React + Nginx, /api 는 backend 로 프록시)
   frontend:
-    build: ./frontend
+    build:
+      context: ./frontend
+      args:
+        # 공유 미리보기 이미지·사이트맵에 쓰는 서비스 주소
+        SITE_URL: ${SITE_URL:-https://loc.junlab.xyz}
     container_name: bus-frontend
     restart: unless-stopped
     ports:

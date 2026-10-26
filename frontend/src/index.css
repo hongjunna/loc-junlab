@@ -365,3 +365,99 @@ a .list-card:hover {
   color: #b45309;
   border-color: #f59e0b;
 }
+
+/* ---------- 로그인 ---------- */
+.google-btn {
+  display: flex;
+  justify-content: center;
+  min-height: 44px;
+}
+.login-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--text-sub);
+  font-size: 0.8rem;
+  margin: 18px 0;
+}
+.login-divider::before,
+.login-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
+/* ---------- 위치 전송 방식 선택 ---------- */
+.source-picker {
+  display: grid;
+  gap: 8px;
+}
+.source-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  background: #fff;
+  border: 2px solid var(--border);
+  border-radius: 12px;
+  padding: 10px 12px;
+  cursor: pointer;
+  margin: 0;
+}
+.source-option.active {
+  border-color: var(--primary);
+  background: #eef2ff;
+}
+.source-option.disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.source-option .form-check {
+  margin: 2px 0 0;
+  min-height: 0;
+}
+
+/* ---------- 위치 앱 설정 안내 ---------- */
+.tracker-status-card {
+  border: 1px solid var(--border);
+  border-radius: 14px;
+}
+.setup-steps {
+  counter-reset: step;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.setup-steps > li {
+  counter-increment: step;
+  position: relative;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 14px 14px 14px 52px;
+  margin-bottom: 10px;
+}
+.setup-steps > li::before {
+  content: counter(step);
+  position: absolute;
+  left: 14px;
+  top: 12px;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--primary);
+  color: #fff;
+  font-weight: 800;
+  font-size: 0.85rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.setup-steps h6 {
+  font-weight: 800;
+  margin-bottom: 10px;
+}
+.admin-brand {
+  display: inline-flex;
+  align-items: center;
+}

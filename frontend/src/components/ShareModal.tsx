@@ -1,25 +1,9 @@
 import { Button, Form, InputGroup, Modal } from 'react-bootstrap';
 import { QRCodeSVG } from 'qrcode.react';
 import { useFeedback } from './feedback/context';
+import { copyText } from '../lib/clipboard';
 import { shareUrlOf } from '../lib/ui';
 import type { DriveLog } from '../types';
-
-const copyText = async (text: string) => {
-  if (navigator.clipboard && window.isSecureContext) {
-    await navigator.clipboard.writeText(text);
-    return;
-  }
-  // 비보안 컨텍스트(HTTP) 대비
-  const textArea = document.createElement('textarea');
-  textArea.value = text;
-  textArea.style.position = 'fixed';
-  textArea.style.left = '-9999px';
-  document.body.appendChild(textArea);
-  textArea.select();
-  const ok = document.execCommand('copy');
-  document.body.removeChild(textArea);
-  if (!ok) throw new Error('copy failed');
-};
 
 const ShareModal = ({
   drive,
@@ -34,7 +18,7 @@ const ShareModal = ({
   const url = shareUrlOf(drive);
   const first = drive.checkpoints[0]?.pointName || '?';
   const last = drive.checkpoints[drive.checkpoints.length - 1]?.pointName || '?';
-  const text = `🚌 ${drive.routeName}\n[출발] ${first} → [도착] ${last}\n실시간 위치를 확인해 보세요.${
+  const text = `🚗 ${drive.routeName}\n[출발] ${first} → [도착] ${last}\n실시간 위치를 확인해 보세요.${
     drive.shareCode ? `\n(조회 코드: ${drive.shareCode})` : ''
   }`;
   const canShare = typeof navigator.share === 'function';

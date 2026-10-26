@@ -44,16 +44,23 @@ check_env() {
     secret=$(openssl rand -hex 32 2>/dev/null || head -c 32 /dev/urandom | od -An -tx1 | tr -d ' \n')
     sed -i.bak "s|^AUTH_SECRET=.*|AUTH_SECRET=${secret}|" "$BACKEND_ENV" && rm -f "$BACKEND_ENV.bak"
     chmod 600 "$BACKEND_ENV"
-    die "$BACKEND_ENV 파일을 만들었습니다. MONGO_URI 와 ADMIN_PASSWORD 를 채운 뒤 다시 실행해주세요."
+    die "$BACKEND_ENV 파일을 만들었습니다. MONGO_URI 와 로그인 방식(ADMIN_PASSWORD 또는 GOOGLE_CLIENT_ID)을 채운 뒤 다시 실행해주세요."
   fi
 
   local missing=()
-  for key in MONGO_URI ADMIN_PASSWORD AUTH_SECRET; do
-    value=$(grep -E "^${key}=" "$BACKEND_ENV" | tail -1 | cut -d= -f2- || true)
-    if [ -z "$value" ] || [ "$value" = "change-me" ] || [[ "$value" == *USER:PASSWORD@HOST* ]]; then
+  env_value() { grep -E "^$1=" "$BACKEND_ENV" | tail -1 | cut -d= -f2- || true; }
+  for key in MONGO_URI AUTH_SECRET; do
+    value=$(env_value "$key")
+    if [ -z "$value" ] || [[ "$value" == *USER:PASSWORD@HOST* ]]; then
       missing+=("$key")
     fi
   done
+  # 로그인 방식은 비밀번호 또는 구글 중 하나 이상
+  password=$(env_value ADMIN_PASSWORD)
+  [ "$password" = "change-me" ] && password=""
+  if [ -z "$password" ] && [ -z "$(env_value GOOGLE_CLIENT_ID)" ]; then
+    missing+=("ADMIN_PASSWORD 또는 GOOGLE_CLIENT_ID")
+  fi
   [ ${#missing[@]} -eq 0 ] || die "$BACKEND_ENV 에 값을 채워주세요: ${missing[*]}"
 }
 
